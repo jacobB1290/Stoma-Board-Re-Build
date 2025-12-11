@@ -132,6 +132,23 @@ export function getDaysUntil(date: Date): number {
   return getDaysDiff(date, getToday());
 }
 
+/**
+ * Add days to a date
+ */
+export function addDays(date: Date, days: number): Date {
+  const result = new Date(date);
+  result.setDate(result.getDate() + days);
+  return result;
+}
+
+/**
+ * Check if a date is a weekday (Mon-Fri)
+ */
+export function isWeekday(date: Date): boolean {
+  const day = date.getDay();
+  return day !== 0 && day !== 6; // Not Sunday (0) or Saturday (6)
+}
+
 // ═══════════════════════════════════════════════════════════
 // COLUMN HEADER HELPERS
 // ═══════════════════════════════════════════════════════════

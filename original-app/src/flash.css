@@ -1,0 +1,134 @@
+/* --------------------------------------------------------------
+   1.5-second master pulse clock (value injected into --pulse-clock)
+-------------------------------------------------------------- */
+/* Bright-tint pulse (priority 09:45-11:59) */
+@keyframes row-glow {
+  0%,
+  100% {
+    filter: brightness(1);
+  }
+  50% {
+    filter: brightness(1.35);
+  }
+}
+.glow {
+  animation: row-glow 1.5s ease-in-out infinite;
+  animation-delay: var(--pulse-clock, 0s);
+}
+
+/* Red overlay pulse (priority ≥12:00 + overdue) */
+@keyframes row-pulse-red {
+  0%,
+  100% {
+    opacity: 0;
+  }
+  50% {
+    opacity: 0.95;
+  }
+}
+.pulse-red,
+.flash-red {
+  position: relative;
+}
+.pulse-red::after,
+.flash-red::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: var(--pulse-color, #ff1e1e);
+  mix-blend-mode: color;
+  opacity: 0;
+  pointer-events: none;
+  animation: row-pulse-red 1.5s ease-in-out infinite;
+  animation-delay: var(--pulse-clock, 0s);
+}
+
+/* --------------------------------------------------------------
+   Generic gentle flash (re-usable utility)
+-------------------------------------------------------------- */
+@keyframes gentleFlash {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.4;
+  }
+}
+.animate-pulse {
+  animation: gentleFlash 1.2s ease-in-out infinite;
+}
+
+/* --------------------------------------------------------------
+   Critical (high-priority) update flash - RED
+-------------------------------------------------------------- */
+@keyframes flashCritical {
+  0%,
+  100% {
+    opacity: 1;
+    color: inherit;
+  }
+  50% {
+    opacity: 0.35;
+    color: #dc2626;
+  }
+}
+.flash-critical {
+  animation: flashCritical 1.2s ease-in-out infinite;
+}
+
+/* --------------------------------------------------------------
+   Settings icon red flash for high-priority updates
+-------------------------------------------------------------- */
+@keyframes settingsFlashRed {
+  0%,
+  100% {
+    background-color: rgba(255, 255, 255, 0.4);
+    border-color: rgba(255, 255, 255, 0.4);
+  }
+  50% {
+    background-color: rgba(220, 38, 38, 0.2);
+    border-color: rgba(220, 38, 38, 0.5);
+  }
+}
+
+/* Apply red flash to settings button when update-critical is active */
+.update-critical button[aria-label="Settings"] {
+  animation: settingsFlashRed 1.2s ease-in-out infinite !important;
+}
+
+/* Apply red flash to the icon inside the settings button */
+.update-critical button[aria-label="Settings"] > span:first-child {
+  animation: flashCritical 1.2s ease-in-out infinite;
+}
+
+/* --------------------------------------------------------------
+   UPDATE COMMAND flash helpers
+   – fires automatically whenever <html> has .update-pending
+-------------------------------------------------------------- */
+.update-pending button[aria-label="Settings"],
+.update-pending .flash-system,
+.update-pending .flash-update {
+  animation: gentleFlash 1.2s ease-in-out infinite;
+}
+
+/* --------------------------------------------------------------
+   Overdue flash animation
+-------------------------------------------------------------- */
+@keyframes overdueFlash {
+  0%,
+  100% {
+    background-color: var(--overdue-bg, #dc2626);
+    filter: brightness(1);
+  }
+  50% {
+    background-color: var(--overdue-bg, #dc2626);
+    filter: brightness(1.3);
+  }
+}
+
+.flash-overdue {
+  animation: overdueFlash 1.5s ease-in-out infinite;
+  animation-delay: var(--pulse-clock, 0s);
+}

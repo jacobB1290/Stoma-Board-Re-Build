@@ -1,0 +1,562 @@
+/*══════════════════════════════════════════════════════════════
+  WHITE THEME • Pastel-Glass 5.19
+  – Slightly off-white global, pure-white nav & day columns,
+    more aggressive drop-shadows on cards & columns,
+    pastel priority & rush rings/borders
+══════════════════════════════════════════════════════════════*/
+
+/*── GLOBAL ───────────────────────────────────────────────────*/
+html.theme-white body {
+  background: #f6f5f5;
+  background-attachment: fixed;
+  color: #0a111d;
+  -webkit-font-smoothing: antialiased;
+  overscroll-behavior: contain;
+}
+
+:root.theme-white {
+  --R: 0.5rem;
+  --bar-bg: #ffffff;
+  --border: rgba(0, 0, 0, 0.08);
+  /* increased shadow intensity and spread */
+  --shadow-ui: 0 6px 20px rgba(0, 0, 0, 0.15);
+  --shadow-btn: 0 2px 7px rgba(0, 0, 0, 0.12);
+  --tab-shadow2: 0 4px 8px rgba(0, 0, 0, 0.12);
+  --tab-active-shadow2: 0 8px 24px rgba(0, 0, 0, 0.24);
+  --tab-indicator: #7a9cff;
+  --row-blue: #d5e8f9;
+  --row-purple: #dad7f9;
+  --row-pink: #f6e1ef;
+  --row-noise: url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAYAAABytg0kAAAAD0lEQVR4AWP4//8/AwAI/AL+4uJVWwAAAABJRU5ErkJggg==");
+  --ring-priority: #fecaca;
+  --ring-rush: #fed7aa;
+  --ring-hold: #fef3c7;
+}
+
+/*──────────────────────────────────────────────────────────────
+  GLOBAL DROP SHADOW FOR MAIN APP CONTAINER
+──────────────────────────────────────────────────────────────*/
+html.theme-white #root > div {
+  box-shadow: var(--shadow-ui) !important;
+}
+
+/*──────────────────────────────────────────────────────────────
+  NAV BAR OVERRIDES
+──────────────────────────────────────────────────────────────*/
+html.theme-white #root > div > header,
+html.theme-white #root > div > header::before,
+html.theme-white #root > div > header::after {
+  background: var(--bar-bg) !important;
+  background-image: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  filter: none !important;
+}
+
+html.theme-white #root > div > header {
+  position: relative;
+  border-bottom: 1px solid var(--border);
+  padding-left: 3rem;
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+html.theme-white #root > div > header button:not([aria-label="Settings"]) {
+  background: var(--bar-bg) !important;
+  color: #0a111d !important;
+  box-shadow: var(--tab-shadow2) !important;
+  border-radius: var(--R);
+  padding: 0.5rem 1rem;
+  margin-right: 0.25rem;
+  transform: translateZ(0);
+  transition: transform 0.12s, box-shadow 0.12s;
+  font-weight: 500;
+}
+
+html.theme-white #root > div > header button:last-child {
+  margin-right: 0;
+}
+
+html.theme-white
+  #root
+  > div
+  > header
+  button:not([aria-label="Settings"]):hover {
+  box-shadow: var(--tab-shadow2), 0 2px 4px rgba(0, 0, 0, 0.08) !important;
+}
+
+html.theme-white #root > div > header button.bg-white,
+html.theme-white #root > div > header button.is-active,
+html.theme-white #root > div > header button[aria-current="page"],
+html.theme-white #root > div > header button[aria-selected="true"] {
+  background: #edf2f7 !important;
+  border: 1px solid var(--border) !important;
+  box-shadow: var(--tab-active-shadow2) !important;
+  font-weight: 600 !important;
+}
+
+html.theme-white #root > div > header button.bg-white::after,
+html.theme-white #root > div > header button.is-active::after,
+html.theme-white #root > div > header button[aria-current="page"]::after,
+html.theme-white #root > div > header button[aria-selected="true"]::after {
+  content: "";
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  bottom: -6px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--tab-indicator);
+}
+
+/*── NAVBAR SHADOW FOR MANAGE CASES PAGE ─────────────────────*/
+.theme-white nav,
+.theme-white [role="navigation"],
+.theme-white .navbar,
+.theme-white .nav-bar,
+.theme-white .navigation,
+.theme-white .header,
+.theme-white #navbar,
+.theme-white #header,
+.theme-white [data-navbar],
+.theme-white [data-nav] {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15), 0 2px 6px rgba(0, 0, 0, 0.1) !important;
+  position: relative;
+  z-index: 1000;
+}
+
+/* Even more aggressive shadow for sticky/fixed navbars */
+.theme-white nav[style*="position: fixed"],
+.theme-white nav[style*="position: sticky"],
+.theme-white [role="navigation"][style*="position: fixed"],
+.theme-white [role="navigation"][style*="position: sticky"],
+.theme-white .navbar[style*="position: fixed"],
+.theme-white .navbar[style*="position: sticky"] {
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.18), 0 3px 10px rgba(0, 0, 0, 0.12) !important;
+}
+
+@media (max-width: 600px) {
+  html.theme-white #root > div > header {
+    padding: 0.5rem;
+    gap: 0;
+    justify-content: center;
+  }
+  html.theme-white #root > div > header button:not([aria-label="Settings"]) {
+    flex: 1;
+    margin: 0;
+  }
+  html.theme-white
+    #root
+    > div
+    > header
+    button:not([aria-label="Settings"])
+    + button {
+    margin-left: 0.5rem;
+  }
+}
+
+/*── DAY COLUMNS & CASE ROWS ─────────────────────────────────*/
+.theme-white .bg-\[\#16525F\],
+.theme-white .bg-yellow-100,
+.theme-white .bg-\[\#4D8490\],
+.theme-white .bg-\[\#55679B\],
+.theme-white .bg-\[\#C75A9E\],
+.theme-white .bg-\[\#6F5BA8\] {
+  border: 1px solid var(--border);
+  border-radius: var(--R);
+  /* use drop-shadow filter for rows, preserving 3px rings */
+  filter: drop-shadow(var(--shadow-ui)) !important;
+}
+
+.theme-white .bg-\[\#16525F\],
+.theme-white .bg-yellow-100 {
+  background: #ffffff !important;
+}
+
+.theme-white .bg-red-700 {
+  background: rgba(255, 0, 0, 0.2) !important;
+  filter: drop-shadow(var(--shadow-ui)) !important;
+}
+
+.theme-white .bg-amber-700 {
+  background: rgba(255, 165, 0, 0.2) !important;
+  filter: drop-shadow(var(--shadow-ui)) !important;
+}
+
+/*── Pastel priority / rush / hold bars + rings ──────────────*/
+.theme-white .bg-red-600 {
+  background: var(--ring-priority) !important;
+}
+
+.theme-white .ring-red-500 {
+  --tw-ring-color: var(--ring-priority) !important;
+}
+.theme-white .ring-orange-400 {
+  --tw-ring-color: var(--ring-rush) !important;
+}
+.theme-white .ring-amber-400 {
+  --tw-ring-color: var(--ring-hold) !important;
+}
+
+/*── CASE ROW PALETTES ───────────────────────────────────────*/
+.theme-white .bg-\[\#4D8490\] {
+  background: var(--row-blue) !important;
+  background-image: var(--row-noise),
+    radial-gradient(
+      120% 120% at 50% 10%,
+      rgba(255, 255, 255, 0.55) 0%,
+      rgba(255, 255, 255, 0) 60%
+    );
+  background-blend-mode: overlay;
+}
+.theme-white .bg-\[\#55679B\] {
+  background: var(--row-purple) !important;
+  background-image: var(--row-noise),
+    radial-gradient(
+      120% 120% at 50% 10%,
+      rgba(255, 255, 255, 0.55) 0%,
+      rgba(255, 255, 255, 0) 60%
+    );
+  background-blend-mode: overlay;
+}
+.theme-white .bg-\[\#C75A9E\] {
+  background: var(--row-pink) !important;
+  background-image: var(--row-noise),
+    radial-gradient(
+      120% 120% at 50% 10%,
+      rgba(255, 255, 255, 0.55) 0%,
+      rgba(255, 255, 255, 0) 60%
+    );
+  background-blend-mode: overlay;
+}
+.theme-white .bg-\[\#6F5BA8\] {
+  background: var(--row-purple) !important;
+  background-image: var(--row-noise),
+    radial-gradient(
+      120% 120% at 50% 10%,
+      rgba(255, 255, 255, 0.55) 0%,
+      rgba(255, 255, 255, 0) 60%
+    );
+  background-blend-mode: overlay;
+}
+
+/*── HOVERS & TEXT ───────────────────────────────────────────*/
+.theme-white button:hover {
+  filter: brightness(0.97);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.24);
+}
+.theme-white .text-white {
+  color: #0a111d !important;
+}
+.theme-white .text-white\/80 {
+  color: #6b7280 !important;
+  opacity: 1 !important;
+}
+.theme-white .text-white\/70 {
+  color: #6b7280 !important;
+  opacity: 0.85 !important;
+}
+.theme-white .text-white\/60 {
+  color: #6b7280 !important;
+  opacity: 0.7 !important;
+}
+.theme-white .text-white\/50 {
+  color: #6b7280 !important;
+  opacity: 0.7 !important;
+}
+
+/*── STAGE DIVIDERS - DARK TEXT FOR WHITE THEME ──────────────*/
+.theme-white .text-black\/50 {
+  color: #374151 !important;
+  opacity: 1 !important;
+}
+.theme-white .bg-black\/20 {
+  background-color: rgba(0, 0, 0, 0.12) !important;
+}
+
+/*── SCROLLBARS ──────────────────────────────────────────────*/
+.theme-white ::-webkit-scrollbar-thumb {
+  background: rgba(105, 125, 150, 0.3);
+  border-radius: 8px;
+}
+.theme-white ::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/*── MODAL HEADER OFFSET FIX ─────────────────────────────────*/
+.theme-white .fixed.inset-0 header {
+  padding-left: 1.5rem !important;
+}
+
+/*══════════════════════════════════════════════════════════════
+  MANAGE CASES PAGE ADDITIONS (v6.5)
+  – Enhanced visibility and contrast
+══════════════════════════════════════════════════════════════*/
+
+/*── GLASS PANELS - PURE WHITE WITH STRONGER SHADOWS ─────────*/
+.theme-white .glass-panel {
+  background: rgba(255, 255, 255, 1) !important; /* Pure white */
+  border: 1px solid rgba(0, 0, 0, 0.12) !important; /* Stronger border */
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.12), 0 4px 12px rgba(0, 0, 0, 0.08) !important; /* Enhanced shadow */
+}
+
+.theme-white .glass-card {
+  background: rgba(255, 255, 255, 1) !important; /* Pure white */
+  border: 1px solid rgba(0, 0, 0, 0.1) !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1), 0 3px 8px rgba(0, 0, 0, 0.06) !important;
+}
+
+.theme-white .glass-card-dark {
+  background: rgba(255, 255, 255, 1) !important; /* White instead of gray */
+  border: 1px solid rgba(0, 0, 0, 0.08) !important;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08) !important;
+}
+
+/*── FORM ELEMENTS - ENHANCED CONTRAST ───────────────────────*/
+.theme-white .form-input,
+.theme-white .form-select,
+.theme-white .filter-input {
+  background: rgba(255, 255, 255, 1) !important;
+  border: 1px solid rgba(0, 0, 0, 0.15) !important; /* Darker border */
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.05), 0 1px 3px rgba(0, 0, 0, 0.05) !important;
+  color: #000000 !important; /* Pure black text */
+}
+
+.theme-white .form-input:hover,
+.theme-white .form-select:hover,
+.theme-white .filter-input:hover {
+  border-color: rgba(0, 0, 0, 0.25) !important;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.05), 0 2px 6px rgba(0, 0, 0, 0.1) !important;
+}
+
+.theme-white .form-input:focus,
+.theme-white .form-select:focus,
+.theme-white .filter-input:focus {
+  border-color: #007aff !important; /* System blue on focus */
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.05),
+    0 0 0 3px rgba(0, 122, 255, 0.1) !important;
+}
+
+/*── SAVE BUTTON STATES - ENHANCED ───────────────────────────*/
+.theme-white .primary-button {
+  background: #ffffff !important;
+  color: #000000 !important;
+  border: 1px solid rgba(0, 0, 0, 0.15) !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1), 0 2px 4px rgba(0, 0, 0, 0.06) !important;
+  font-weight: 600 !important;
+  transition: all 0.2s ease !important;
+}
+
+.theme-white .primary-button:hover:not(:disabled) {
+  transform: translateY(-2px) !important;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15), 0 4px 8px rgba(0, 0, 0, 0.1) !important;
+  border-color: rgba(0, 0, 0, 0.2) !important;
+}
+
+.theme-white .primary-button:active:not(:disabled) {
+  transform: translateY(0) !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1), 0 1px 3px rgba(0, 0, 0, 0.06) !important;
+}
+
+.theme-white .primary-button:disabled {
+  background: #f3f4f6 !important;
+  color: #9ca3af !important;
+  border-color: rgba(0, 0, 0, 0.05) !important;
+  box-shadow: none !important;
+  cursor: not-allowed !important;
+  opacity: 1 !important;
+}
+
+/*── TOGGLE BUTTONS - ENHANCED CONTRAST ──────────────────────*/
+.theme-white .toggle-inactive {
+  background: rgba(255, 255, 255, 1) !important;
+  border: 1px solid rgba(0, 0, 0, 0.15) !important;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08) !important;
+  color: currentColor !important;
+  font-weight: 500 !important;
+}
+
+.theme-white .toggle-inactive:hover {
+  border-color: rgba(0, 0, 0, 0.2) !important;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.12) !important;
+}
+
+.theme-white .toggle-glow-red {
+  background: #fee2e2 !important; /* Lighter pastel */
+  color: #7f1d1d !important; /* Darker text */
+  border: 1px solid #fecaca !important;
+  box-shadow: 0 0 0 3px rgba(254, 202, 202, 0.3),
+    0 4px 12px rgba(220, 38, 38, 0.15) !important;
+  font-weight: 600 !important;
+}
+
+.theme-white .toggle-glow-orange {
+  background: #fed7aa !important;
+  color: #7c2d12 !important; /* Darker text */
+  border: 1px solid #fdba74 !important;
+  box-shadow: 0 0 0 3px rgba(254, 215, 170, 0.3),
+    0 4px 12px rgba(234, 88, 12, 0.15) !important;
+  font-weight: 600 !important;
+}
+
+.theme-white .toggle-glow-amber {
+  background: #fef3c7 !important;
+  color: #78350f !important; /* Darker text */
+  border: 1px solid #fde68a !important;
+  box-shadow: 0 0 0 3px rgba(254, 243, 199, 0.3),
+    0 4px 12px rgba(217, 119, 6, 0.15) !important;
+  font-weight: 600 !important;
+}
+
+/*── STATUS DOTS - VIBRANT PASTELS ───────────────────────────*/
+.theme-white .status-dot {
+  opacity: 1 !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15) !important;
+}
+
+.theme-white .bg-green-500,
+.theme-white .status-dot.bg-green-500 {
+  background: #86efac !important;
+}
+
+.theme-white .bg-red-500,
+.theme-white .status-dot.bg-red-500 {
+  background: #fecaca !important;
+}
+
+.theme-white .bg-orange-500,
+.theme-white .status-dot.bg-orange-500 {
+  background: #fed7aa !important;
+}
+
+.theme-white .bg-amber-500,
+.theme-white .status-dot.bg-amber-500 {
+  background: #fef3c7 !important;
+}
+
+.theme-white .bg-teal-600,
+.theme-white .status-dot.bg-teal-600 {
+  background: #5eead4 !important;
+}
+
+.theme-white .bg-purple-600,
+.theme-white .status-dot.bg-purple-600 {
+  background: #ddd6fe !important;
+}
+
+.theme-white .bg-pink-600,
+.theme-white .status-dot.bg-pink-600 {
+  background: #fbcfe8 !important;
+}
+
+/*── TABLE STYLES - ENHANCED VISIBILITY ───────────────────────*/
+.theme-white table {
+  background: rgba(255, 255, 255, 1) !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1), 0 3px 8px rgba(0, 0, 0, 0.06) !important;
+  border: 1px solid rgba(0, 0, 0, 0.08) !important;
+  border-radius: 0.75rem !important;
+}
+
+.theme-white thead {
+  background: rgba(249, 250, 251, 1) !important;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08) !important;
+}
+
+.theme-white tbody tr {
+  border-top: 1px solid rgba(0, 0, 0, 0.05) !important;
+}
+
+.theme-white tbody tr:hover {
+  background: rgba(249, 250, 251, 0.8) !important;
+}
+
+/*── TEXT COLOR FIXES - MAXIMUM CONTRAST ─────────────────────*/
+.theme-white .text-gray-100 {
+  color: #374151 !important;
+}
+
+.theme-white .text-gray-300 {
+  color: #4b5563 !important;
+}
+
+.theme-white .text-gray-400 {
+  color: #6b7280 !important;
+}
+
+.theme-white .text-gray-500 {
+  color: #6b7280 !important;
+}
+
+.theme-white .text-gray-600 {
+  color: #374151 !important;
+}
+
+.theme-white .text-gray-700 {
+  color: #1f2937 !important;
+}
+
+.theme-white .text-gray-800 {
+  color: #111827 !important;
+}
+
+.theme-white .text-gray-900 {
+  color: #000000 !important;
+}
+
+.theme-white .text-red-600 {
+  color: #dc2626 !important;
+}
+
+.theme-white .text-orange-600 {
+  color: #ea580c !important;
+}
+
+.theme-white .text-amber-600 {
+  color: #d97706 !important;
+}
+
+/*── INFO BAR CARDS - ENHANCED ───────────────────────────────*/
+.theme-white .ring-red-500\/30 {
+  --tw-ring-color: rgba(220, 38, 38, 0.2) !important;
+}
+
+.theme-white .ring-orange-500\/30 {
+  --tw-ring-color: rgba(234, 88, 12, 0.2) !important;
+}
+
+.theme-white .bg-red-500\/15 {
+  background-color: rgba(254, 226, 226, 1) !important;
+}
+
+.theme-white .bg-orange-500\/15 {
+  background-color: rgba(254, 215, 170, 1) !important;
+}
+
+.theme-white .bg-teal-600\/15 {
+  background-color: rgba(204, 251, 241, 1) !important;
+}
+
+/*── GLOW EFFECTS - SUBTLE FOR WHITE THEME ───────────────────*/
+.theme-white .input-glow-container:focus-within::before {
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.theme-white .input-glow-container:focus-within .form-input,
+.theme-white .input-glow-container:focus-within .form-select {
+  border-color: #007aff !important;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.05),
+    0 0 0 3px rgba(0, 122, 255, 0.1) !important;
+}
+
+/*── PLACEHOLDER TEXT ────────────────────────────────────────*/
+.theme-white .form-input::placeholder {
+  color: #9ca3af !important;
+  opacity: 1 !important;
+}
+
+/*── VERSION TEXT ────────────────────────────────────────────*/
+.theme-white .text-xs.text-gray-600 {
+  color: #6b7280 !important;
+}
