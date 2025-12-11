@@ -5,14 +5,22 @@
  * Shown when the user hasn't set their name yet
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useUser } from '@/contexts/UserContext';
 
 export function UserSetupModal() {
   const { needsName, saveName } = useUser();
   const [name, setName] = useState('');
   const [error, setError] = useState('');
+  const [mounted, setMounted] = useState(false);
 
+  // Wait for client-side mount to avoid hydration mismatch
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // Don't render anything until mounted (prevents hydration mismatch)
+  if (!mounted) return null;
   if (!needsName) return null;
 
   const handleSubmit = (e: React.FormEvent) => {

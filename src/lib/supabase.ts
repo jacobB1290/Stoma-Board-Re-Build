@@ -5,28 +5,23 @@
 
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
-// Environment variables with fallbacks for development
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co';
-const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholder-key';
+// Environment variables with hard-coded fallbacks
+const SUPABASE_URL =
+  process.env.NEXT_PUBLIC_SUPABASE_URL ??
+  'https://totqejdgvgxfonaebyla.supabase.co';
 
-// Check if we have real credentials
-const hasCredentials = Boolean(
-  process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-);
-
-if (!hasCredentials && typeof window !== 'undefined') {
-  console.warn(
-    'Supabase credentials not found. Please set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY environment variables.'
-  );
-}
+const SUPABASE_ANON_KEY =
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ??
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRv' +
+  'dHFlamRndmd4Zm9uYWVieWxhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDcxNTYyNDYsImV4cC' +
+  'I6MjA2MjczMjI0Nn0.bWUKvPL2trYlei-kEecLwpY12PZixZoGu1gGsLFGvrs';
 
 /**
  * Supabase client instance
- * Using untyped client for flexibility with dynamic schemas
  */
 export const db: SupabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   auth: {
-    persistSession: false, // No auth persistence needed for this app
+    persistSession: false,
   },
   realtime: {
     params: {
@@ -36,8 +31,8 @@ export const db: SupabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, 
 });
 
 /**
- * Check if Supabase is configured
+ * Check if Supabase is configured (has real credentials, not just fallbacks)
  */
 export function isSupabaseConfigured(): boolean {
-  return hasCredentials;
+  return Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL);
 }

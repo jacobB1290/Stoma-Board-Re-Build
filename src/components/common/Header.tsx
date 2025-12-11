@@ -5,7 +5,7 @@
  * Main navigation header with user info and department tabs
  */
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useUser } from '@/contexts/UserContext';
 import { useUI } from '@/contexts/UIContext';
 import { useDispatch } from '@/contexts/DispatchContext';
@@ -16,6 +16,11 @@ export function Header() {
   const { name } = useUser();
   const { activeDepartment, currentView } = useUI();
   const { dispatch } = useDispatch();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const handleDepartmentChange = (dept: Department) => {
     dispatch('ui.set_department', { department: dept });
@@ -58,7 +63,7 @@ export function Header() {
               d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" 
             />
           </svg>
-          <span className="text-white font-medium">{name || 'User'}</span>
+          <span className="text-white font-medium">{mounted ? (name || 'User') : 'User'}</span>
         </button>
       </div>
 
