@@ -1,188 +1,472 @@
 # Stoma Board
 
-A modern Dental Lab Case Management System built with Next.js 14, TypeScript, and Supabase.
+A modern Dental Lab Case Management System built with Next.js, TypeScript, and Supabase.
 
-## Architecture
+---
 
-This application is built with an **Action-Driven Architecture** that enables:
+## 🏗️ ARCHITECTURE PRINCIPLES
 
-1. **Unified Action System** - Every user interaction is represented as a typed action
-2. **LLM Integration Ready** - The same actions can be triggered by AI assistants
-3. **Type-Safe Throughout** - Full TypeScript support from database to UI
+This application follows an **AI-Native, Efficiency-First Architecture**. Every decision prioritizes:
 
-### Core Concepts
+1. **Reuse over recreation** - Never duplicate logic
+2. **Thin UI components** - Components render state, they don't manage business logic
+3. **Single source of truth** - One place for each piece of logic
+4. **Action-driven interactions** - All state changes flow through the dispatcher
+
+---
+
+## 🎯 EFFICIENCY-FIRST MINDSET
+
+### ⚠️ MANDATORY RULES BEFORE ANY CODE CHANGE
 
 ```
-┌─────────────────┐     ┌─────────────────┐
-│   React UI      │     │   LLM API       │
-│  (buttons,      │     │  (natural       │
-│   forms, etc)   │     │   language)     │
-└────────┬────────┘     └────────┬────────┘
-         │                       │
-         │  { type, payload }    │  { type, payload }
-         │                       │
-         └───────────┬───────────┘
-                     ▼
-         ┌───────────────────────┐
-         │   ACTION DISPATCHER   │
-         │   (Central Hub)       │
-         └───────────────────────┘
-                     │
-                     ▼
-         ┌───────────────────────┐
-         │   Services Layer      │
-         │   (caseService, etc)  │
-         └───────────────────────┘
-                     │
-                     ▼
-         ┌───────────────────────┐
-         │   Supabase DB         │
-         └───────────────────────┘
+┌─────────────────────────────────────────────────────────────────────────┐
+│  STOP! Before writing ANY code, answer these questions:                 │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                         │
+│  1. DOES THIS LOGIC ALREADY EXIST?                                      │
+│     Search these files first:                                           │
+│     • services/caseService.ts - All case business logic                 │
+│     • lib/animations.ts - All animation configs                         │
+│     • lib/constants.ts - All constants                                  │
+│     • utils/dateUtils.ts - All date utilities                           │
+│     • contexts/*Context.tsx - All shared state                          │
+│     → If found: IMPORT IT, don't recreate                               │
+│                                                                         │
+│  2. WHERE IS THE CORRECT LOCATION FOR THIS?                             │
+│     • Database operations → services/*.ts                               │
+│     • State mutations → dispatch('action.type', payload)                │
+│     • Animation config → lib/animations.ts                              │
+│     • Constants/colors → lib/constants.ts or CSS variables              │
+│     • UI rendering → components/*.tsx (THIN, no logic)                  │
+│                                                                         │
+│  3. WILL THIS CAUSE DUPLICATION?                                        │
+│     → If YES: Refactor existing code to be reusable FIRST               │
+│     → Extract into shared module, THEN import                           │
+│                                                                         │
+│  4. IS THIS A COMPONENT ANTI-PATTERN?                                   │
+│     Check the "Anti-Patterns" section below                             │
+│                                                                         │
+└─────────────────────────────────────────────────────────────────────────┘
 ```
 
-## Tech Stack
+### ❌ ANTI-PATTERNS (NEVER DO)
 
-- **Framework:** Next.js 14 (App Router)
-- **Language:** TypeScript
-- **Database:** Supabase (PostgreSQL)
-- **Styling:** Tailwind CSS v4
-- **Animation:** Framer Motion
-- **State:** React Context + Realtime subscriptions
+```typescript
+// ❌ NEVER: Local state for global data
+const [isComplete, setIsComplete] = useState(caseData.completed);
 
-## Project Structure
+// ❌ NEVER: Direct Supabase calls in components
+const handleClick = async () => {
+  await supabase.from('cases').update({ completed: true });
+};
+
+// ❌ NEVER: Business logic in components
+const bgColor = caseData.modifiers?.includes('stage2') ? '#6F5BA8' : '#4D8490';
+
+// ❌ NEVER: Inline animation configs
+<motion.div transition={{ type: "spring", stiffness: 500, damping: 40 }} />
+
+// ❌ NEVER: Hardcoded colors
+<div style={{ backgroundColor: '#16525F' }} />
+
+// ❌ NEVER: Duplicating shared components
+// If DayCol and MetaCol need same PriorityBar, extract to shared component
+
+// ❌ NEVER: Multiple files with same calculations
+// If ranking/sorting exists in Board.tsx, don't recreate in DayCol.tsx
+```
+
+### ✅ CORRECT PATTERNS (ALWAYS DO)
+
+```typescript
+// ✅ USE: Dispatch for all mutations
+const { dispatch } = useDispatch();
+onClick={() => dispatch('case.toggle_complete', { id: caseData.id })}
+
+// ✅ USE: Context for all global state
+const { rows, loading } = useData();
+const { activeDepartment } = useUI();
+
+// ✅ USE: Shared animations
+import { SPRING, layoutProps, rowVariants } from '@/lib/animations';
+<motion.div {...layoutProps} variants={rowVariants} />
+
+// ✅ USE: CSS variables for colors
+<div style={{ backgroundColor: 'var(--row-default)' }} />
+<div className="bg-[var(--col-normal)]" />
+
+// ✅ USE: Pure helper functions for derived values
+function getRowBackground(c: Case): string {
+  if (c.stage2) return 'var(--row-stage2)';
+  if (c.caseType === 'bbs') return 'var(--row-bbs)';
+  return 'var(--row-default)';
+}
+
+// ✅ USE: Shared components
+import { PriorityBar } from '@/components/board/shared/PriorityBar';
+import { ColumnShell } from '@/components/board/shared/ColumnShell';
+```
+
+---
+
+## 📐 SYSTEM ARCHITECTURE
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                         USER INTERFACE                          │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐          │
+│  │   Board      │  │   Editor     │  │   Settings   │          │
+│  │   View       │  │   View       │  │   Modal      │          │
+│  └──────┬───────┘  └──────┬───────┘  └──────┬───────┘          │
+│         │                 │                 │                   │
+│         └─────────────────┼─────────────────┘                   │
+│                           │                                     │
+│                           ▼                                     │
+│              ┌────────────────────────┐                         │
+│              │   dispatch(action)     │  ← ONE entry point      │
+│              └────────────┬───────────┘                         │
+└───────────────────────────┼─────────────────────────────────────┘
+                            │
+                            ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                     ACTION DISPATCHER                           │
+│  ┌─────────────────────────────────────────────────────────┐   │
+│  │  Registered Handlers (DispatchContext.tsx):             │   │
+│  │  • case.create    → caseService.createCase()            │   │
+│  │  • case.update    → caseService.updateCase()            │   │
+│  │  • case.delete    → caseService.deleteCase()            │   │
+│  │  • case.toggle_*  → caseService.toggleModifier()        │   │
+│  │  • case.change_stage → caseService.updateStage()        │   │
+│  │  • ui.*           → UIContext state setters             │   │
+│  │  • query.*        → caseService query functions         │   │
+│  └─────────────────────────────────────────────────────────┘   │
+└───────────────────────────┬─────────────────────────────────────┘
+                            │
+                            ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                      SERVICES LAYER                             │
+│  ┌─────────────────┐  ┌─────────────────┐                      │
+│  │  caseService    │  │  userService    │  ← Business logic    │
+│  │  • CRUD ops     │  │  • Identity     │     lives HERE       │
+│  │  • Queries      │  │  • Heartbeat    │                      │
+│  │  • Validation   │  │  • Presence     │                      │
+│  │  • Modifiers    │  │                 │                      │
+│  └────────┬────────┘  └────────┬────────┘                      │
+│           │                    │                                │
+│           └────────────────────┘                                │
+│                       │                                         │
+└───────────────────────┼─────────────────────────────────────────┘
+                        │
+                        ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                      SUPABASE                                   │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐             │
+│  │   cases     │  │  history    │  │  devices    │             │
+│  └─────────────┘  └─────────────┘  └─────────────┘             │
+│                           │                                     │
+│                    Realtime Subscription                        │
+│                           │                                     │
+└───────────────────────────┼─────────────────────────────────────┘
+                            │
+                            ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                      DATA CONTEXT                               │
+│  • Holds current state (rows, loading, error)                   │
+│  • Receives realtime updates                                    │
+│  • Provides filtered views via hooks                            │
+│  • DOES NOT contain business logic                              │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 📁 PROJECT STRUCTURE
 
 ```
 src/
-├── actions/           # Action system (schema, dispatcher)
-├── app/              # Next.js app router pages
-├── components/       # React components
-│   ├── common/       # Shared components (Header, etc)
-│   ├── board/        # Board view components
-│   ├── editor/       # Case editor components
-│   └── settings/     # Settings components
-├── contexts/         # React contexts
-├── hooks/            # Custom React hooks
-├── lib/              # Utilities (Supabase client, constants)
-├── services/         # Database services
-└── types/            # TypeScript types
+├── actions/                    # Action System
+│   ├── schema.ts              # Action type definitions (SOURCE OF TRUTH)
+│   ├── dispatcher.ts          # Core dispatcher (routes actions to handlers)
+│   └── index.ts               # Exports
+│
+├── services/                   # Business Logic Layer (NO UI CODE HERE)
+│   ├── caseService.ts         # ALL case operations (CRUD, queries, modifiers)
+│   ├── userService.ts         # User identity, heartbeat
+│   └── index.ts               # Exports
+│
+├── contexts/                   # React State Management
+│   ├── DataContext.tsx        # Case data + realtime subscription
+│   ├── UIContext.tsx          # UI state (view, department, modals)
+│   ├── UserContext.tsx        # User identity
+│   ├── DispatchContext.tsx    # Connects dispatcher to React (HANDLERS HERE)
+│   └── index.ts               # Exports
+│
+├── components/                 # UI Components (THIN - render only)
+│   ├── common/                # Shared UI components
+│   │   ├── Providers.tsx      # Context providers wrapper
+│   │   ├── Header.tsx         # Navigation header
+│   │   └── index.ts
+│   ├── board/                 # Board view components
+│   │   ├── Board.tsx          # Main board container
+│   │   ├── DayCol.tsx         # Day column
+│   │   ├── MetaCol.tsx        # Overdue/OnHold columns
+│   │   ├── CaseRow.tsx        # Single case row (THIN)
+│   │   ├── shared/            # Shared board subcomponents
+│   │   │   ├── ColumnShell.tsx
+│   │   │   ├── ColumnHeader.tsx
+│   │   │   ├── PriorityBar.tsx
+│   │   │   └── StageDivider.tsx
+│   │   └── index.ts
+│   └── editor/                # Case editor
+│       ├── CaseEditor.tsx     # Editor form
+│       └── index.ts
+│
+├── lib/                        # Shared Utilities (IMPORT FROM HERE)
+│   ├── index.ts               # BARREL FILE - import all from '@/lib'
+│   ├── supabase.ts            # Supabase client
+│   ├── constants.ts           # App constants (departments, stages)
+│   ├── animations.ts          # ALL animation configs (SINGLE SOURCE)
+│   └── cn.ts                  # Class name utility
+│
+├── utils/                      # Pure Utility Functions
+│   └── dateUtils.ts           # Date formatting/calculations
+│
+├── types/                      # TypeScript Definitions
+│   ├── database.ts            # DB schema types
+│   ├── case.ts                # Case domain types
+│   ├── actions.ts             # Action payload types
+│   └── index.ts               # Exports
+│
+└── app/                        # Next.js App Router
+    ├── layout.tsx             # Root layout with providers
+    ├── page.tsx               # Main page (routes to views)
+    └── globals.css            # Global styles + CSS variables
 ```
 
-## Setup
+---
 
-### Prerequisites
+## 🎨 STYLING ARCHITECTURE
 
-- Node.js 18+
-- A Supabase project
+### CSS Variables (SINGLE SOURCE OF TRUTH)
 
-### Environment Variables
+All colors, spacing, and design tokens are defined ONCE in `globals.css`:
 
-Create a `.env.local` file:
-
-```env
-NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+```css
+:root {
+  /* Column backgrounds */
+  --col-normal: #16525F;      /* Teal columns */
+  --col-today: #fef9c3;       /* Yellow for today */
+  --col-overdue: #b91c1c;     /* Red for overdue */
+  --col-hold: #b45309;        /* Amber for on hold */
+  
+  /* Row backgrounds */
+  --row-default: #4D8490;     /* Teal rows */
+  --row-stage2: #6F5BA8;      /* Purple for stage2 */
+  --row-bbs: #55679B;         /* Blue for BBS */
+  --row-flex: #C75A9E;        /* Pink for Flex */
+  
+  /* Status rings - use Tailwind ring utilities */
+  /* Priority: ring-red-500 */
+  /* Rush: ring-orange-400 */
+}
 ```
 
-### Database Setup
+### Animation Config (SINGLE SOURCE in lib/animations.ts)
 
-Run these SQL commands in your Supabase SQL editor:
-
-```sql
--- Cases table
-CREATE TABLE cases (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  casenumber TEXT NOT NULL,
-  department TEXT NOT NULL DEFAULT 'General',
-  due TIMESTAMP WITH TIME ZONE NOT NULL,
-  priority BOOLEAN DEFAULT false,
-  modifiers TEXT[] DEFAULT '{}',
-  completed BOOLEAN DEFAULT false,
-  archived BOOLEAN DEFAULT false,
-  archived_at TIMESTAMP WITH TIME ZONE,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT now()
-);
-
--- Case history table
-CREATE TABLE case_history (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  case_id UUID REFERENCES cases(id) ON DELETE CASCADE,
-  action TEXT NOT NULL,
-  user_name TEXT NOT NULL,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT now()
-);
-
--- Active devices table (for user presence)
-CREATE TABLE active_devices (
-  user_name TEXT PRIMARY KEY,
-  app_version TEXT,
-  last_seen TIMESTAMP WITH TIME ZONE DEFAULT now()
-);
-
--- Enable realtime
-ALTER PUBLICATION supabase_realtime ADD TABLE cases;
-
--- Indexes
-CREATE INDEX idx_cases_archived ON cases(archived);
-CREATE INDEX idx_cases_due ON cases(due);
-CREATE INDEX idx_case_history_case_id ON case_history(case_id);
+```typescript
+// IMPORT these, never define inline
+import { 
+  SPRING,           // Standard spring transition
+  FAST_SPRING,      // Quick exits
+  BUBBLE_SPRING,    // Button reveals
+  layoutProps,      // Spread onto motion.div for layout
+  rowVariants,      // Row enter/exit animations
+  revealButtonVariants,
+  dividerVariants,
+  initPulseClock,   // Call once at app start
+  isInBlueWindow,   // Time-based pulse logic
+  isInRedWindow,
+} from '@/lib/animations';
 ```
 
-### Installation
+---
 
-```bash
-npm install
-npm run dev
+## 🔄 DATA FLOW EXAMPLE
+
+### User clicks "Next Stage" on a case:
+
+```
+1. CaseRow component (THIN)
+   └─→ onClick={() => dispatch('case.change_stage', { id, stage: 'production' })}
+
+2. DispatchContext
+   └─→ Routes to registered handler
+
+3. Handler (in DispatchContext.tsx)
+   └─→ Calls caseService.updateStage(id, 'production', userName)
+
+4. caseService (services/caseService.ts)
+   └─→ Updates Supabase
+   └─→ Logs to case_history
+
+5. Supabase Realtime
+   └─→ Broadcasts change to all clients
+
+6. DataContext subscription
+   └─→ Updates local state (rows array)
+
+7. React re-renders
+   └─→ CaseRow shows new stage
 ```
 
-## Available Actions
+**Key insight:** The component NEVER directly manipulates data. It only dispatches an intent.
 
-The action system supports these operations:
+---
 
-### Case Actions
-- `case.create` - Create a new case
-- `case.update` - Update case details
-- `case.delete` - Delete a case
-- `case.toggle_priority` - Toggle priority flag
-- `case.toggle_rush` - Toggle rush flag
-- `case.toggle_hold` - Toggle hold flag
-- `case.toggle_complete` - Mark complete/incomplete
-- `case.change_stage` - Move to different stage
-- `case.archive` - Archive cases
-- `case.restore` - Restore from archive
+## 📋 COMPONENT PATTERNS
 
-### UI Actions
-- `ui.set_department` - Change department filter
-- `ui.set_theme` - Change color theme
-- `ui.navigate` - Navigate between views
+### ✅ Correct CaseRow Pattern:
 
-### Query Actions
-- `query.get_case` - Get case by ID
-- `query.search_cases` - Search cases
-- `query.get_overdue` - Get overdue cases
-- `query.check_duplicates` - Check for duplicate case numbers
+```tsx
+function CaseRow({ caseData }: { caseData: Case }) {
+  const { dispatch } = useDispatch();
+  
+  // ALL interactions dispatch actions - NO direct logic
+  return (
+    <motion.div 
+      {...layoutProps}
+      variants={rowVariants}
+      onClick={() => dispatch('ui.open_editor', { id: caseData.id })}
+      onContextMenu={(e) => {
+        e.preventDefault();
+        dispatch('case.toggle_priority', { id: caseData.id });
+      }}
+      className={cn(
+        'case-row',
+        caseData.priority && 'ring-[3px] ring-red-500',
+        caseData.rush && !caseData.priority && 'ring-[3px] ring-orange-400'
+      )}
+      style={{ backgroundColor: getRowBackground(caseData) }}
+    >
+      {caseData.caseNumber}
+    </motion.div>
+  );
+}
 
-## Deployment
+// PURE function - no side effects, easy to test
+function getRowBackground(c: Case): string {
+  if (c.stage2) return 'var(--row-stage2)';
+  if (c.caseType === 'bbs') return 'var(--row-bbs)';
+  if (c.caseType === 'flex') return 'var(--row-flex)';
+  return 'var(--row-default)';
+}
+```
 
-### Vercel
+### ✅ Correct Column Pattern (Shared Components):
 
-1. Connect your GitHub repository to Vercel
-2. Add environment variables in Vercel dashboard
-3. Deploy!
+```tsx
+// components/board/shared/ColumnShell.tsx
+export function ColumnShell({ 
+  children, 
+  variant 
+}: { 
+  children: React.ReactNode;
+  variant: 'normal' | 'today' | 'overdue' | 'hold';
+}) {
+  const bgClass = {
+    normal: 'bg-[var(--col-normal)]',
+    today: 'bg-[var(--col-today)]',
+    overdue: 'bg-[var(--col-overdue)]',
+    hold: 'bg-[var(--col-hold)]',
+  }[variant];
 
-## Development Roadmap
+  return (
+    <motion.div {...layoutProps} className={cn('flex-1 min-w-[200px] p-4 rounded-lg', bgClass)}>
+      {children}
+    </motion.div>
+  );
+}
 
-- [x] Core action system
-- [x] Supabase integration
-- [x] User identity & heartbeat
-- [x] Basic layout shell
-- [ ] Board view with day columns
-- [ ] Case editor form
+// Now DayCol and MetaCol both use:
+import { ColumnShell } from './shared/ColumnShell';
+```
+
+---
+
+## 🚀 ADDING NEW FEATURES
+
+### Checklist Before Implementation:
+
+1. [ ] Search existing code - does this logic exist anywhere?
+2. [ ] Identify correct location per architecture diagram
+3. [ ] Check if action type exists in schema.ts (add if needed)
+4. [ ] Check if service function exists (add if needed)
+5. [ ] Verify handler registered in DispatchContext
+6. [ ] Component ONLY dispatches actions (no direct logic)
+7. [ ] Styles use CSS variables
+8. [ ] Animations use shared configs from lib/animations.ts
+9. [ ] No duplication with existing code
+
+### Adding a New Toggle (Example):
+
+```typescript
+// 1. Check schema.ts - add if not present:
+'case.toggle_rush': { id: string }
+
+// 2. Check caseService.ts - toggleModifier() already handles this ✓
+
+// 3. Check DispatchContext.tsx - add handler if needed:
+registerHandler('case.toggle_rush', async ({ id }) => {
+  await toggleModifier(id, 'rush', userName);
+});
+
+// 4. Component just dispatches:
+<button onClick={() => dispatch('case.toggle_rush', { id })}>
+  Toggle Rush
+</button>
+```
+
+---
+
+## 🔧 TECH STACK
+
+- **Framework:** Next.js 15+ (App Router)
+- **Language:** TypeScript (strict mode)
+- **Database:** Supabase (PostgreSQL + Realtime)
+- **Styling:** Tailwind CSS v4 + CSS Variables
+- **Animation:** Framer Motion (shared configs)
+- **State:** React Context + Realtime subscriptions
+
+---
+
+## 📊 DEVELOPMENT STATUS
+
+### Core Infrastructure ✅
+- [x] Action schema & dispatcher
+- [x] Services layer (caseService, userService)
+- [x] Contexts (Data, UI, User, Dispatch)
+- [x] Supabase integration & realtime
+- [x] CSS variables & design tokens
+- [x] Shared animation configs
+
+### UI Components (Efficiency-First Rebuild)
+- [x] Board view
+- [x] DayCol component
+- [x] MetaCol component  
+- [x] CaseRow component (THIN)
+- [x] Header with dropdowns
+- [x] CaseEditor form
 - [ ] Settings modal
-- [ ] Overdue/Hold sidebars
-- [ ] Stage management for Digital cases
-- [ ] LLM API endpoint
-- [ ] Statistics & metrics
+- [ ] Shared column components (extract)
 
-## License
+### Future
+- [ ] LLM API endpoint
+- [ ] Voice commands
+- [ ] Statistics dashboard
+
+---
+
+## 📜 LICENSE
 
 Private - All rights reserved

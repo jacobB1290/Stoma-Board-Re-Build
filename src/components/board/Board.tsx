@@ -1,69 +1,45 @@
 'use client';
 
 /**
- * Board Component - EXACT REPLICA of original
- * Main board view showing cases organized by due date
+ * Board Component
+ * 
+ * Main board view showing cases organized by due date.
+ * 
+ * ARCHITECTURE COMPLIANCE:
+ * ✅ Uses shared animations from lib/animations
+ * ✅ Uses shared helper functions from lib/caseHelpers
+ * ✅ No duplicated sorting logic - uses compareCases
+ * ✅ Initializes pulse clock via shared function
  */
 
-import { useMemo, useState, useEffect } from 'react';
-import { LayoutGroup, motion, AnimatePresence } from 'framer-motion';
+import { useMemo, useEffect } from 'react';
+import { LayoutGroup, motion } from 'framer-motion';
 import { useData } from '@/contexts/DataContext';
 import { useUI } from '@/contexts/UIContext';
 import { DayCol } from './DayCol';
 import { MetaCol } from './MetaCol';
 import { toISODate, parseISODate, isWeekday, addDays, getToday } from '@/utils/dateUtils';
+import { 
+  SPRING,
+  initPulseClock,
+  compareCases,
+} from '@/lib';
 import type { Case } from '@/types/case';
 
-// Animation constants from original animationEngine.js
-const SPRING = { type: "spring" as const, stiffness: 500, damping: 40, mass: 2 };
-
-// 1.5-s master clock → CSS var --pulse-clock (from original)
-const CYCLE = 1500;
-
-// Ranking function from original
-const rank = (r: Case) =>
-  r.priority
-    ? 0
-    : r.rush
-    ? 1
-    : r.stage2 && r.department === 'Metal'
-    ? 3
-    : r.caseType === 'bbs'
-    ? 4
-    : r.caseType === 'flex'
-    ? 5
-    : 2;
-
-const compare = (a: Case, b: Case) => {
-  const ra = rank(a);
-  const rb = rank(b);
-  if (ra !== rb) return ra - rb;
-  const da = new Date(a.due);
-  const db = new Date(b.due);
-  if (da < db) return -1;
-  if (da > db) return 1;
-  return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
-};
+// ═══════════════════════════════════════════════════════════
+// MAIN COMPONENT
+// ═══════════════════════════════════════════════════════════
 
 export function Board() {
   const { rows } = useData();
   const { activeDepartment } = useUI();
 
-  // Initialize pulse clock (from original)
+  // Initialize pulse clock (using shared function from lib/animations)
   useEffect(() => {
-    if (typeof window !== "undefined" && !(window as unknown as {__pulseClockInit?: boolean}).__pulseClockInit) {
-      (window as unknown as {__pulseClockInit?: boolean}).__pulseClockInit = true;
-      const tick = () =>
-        document.documentElement.style.setProperty(
-          "--pulse-clock",
-          `${-(Date.now() % CYCLE) / 1000}s`
-        );
-      tick();
-      setInterval(tick, CYCLE);
-    }
+    initPulseClock();
   }, []);
 
-  // Build 7-day weekday horizon (like original)
+  // Build 7-day weekday horizon
   const horizon = useMemo(() => {
     const out: Date[] = [];
     let p = getToday();
@@ -76,7 +52,7 @@ export function Board() {
 
   const today = getToday();
 
-  // Filter and bucket cases (exact logic from original)
+  // Filter and bucket cases
   const { map, overdue, hold } = useMemo(() => {
     // Filter by department
     const filteredRows = activeDepartment 
@@ -109,15 +85,15 @@ export function Board() {
       }
     });
 
-    // Sort each bucket
-    late.sort(compare);
-    holdArr.sort(compare);
-    Object.values(m).forEach(arr => arr.sort(compare));
+    // Sort using shared compareCases function
+    late.sort(compareCases);
+    holdArr.sort(compareCases);
+    Object.values(m).forEach(arr => arr.sort(compareCases));
 
     return { map: m, overdue: late, hold: holdArr };
   }, [rows, horizon, today, activeDepartment]);
 
-  // Determine if we should show stage dividers (Digital view only)
+  // Show stage dividers only for Digital view
   const showStageDividers = activeDepartment === 'Digital';
 
   return (
