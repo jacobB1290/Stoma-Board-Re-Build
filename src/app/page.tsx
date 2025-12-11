@@ -118,7 +118,7 @@ function RecentCasesTable() {
   }
 
   return (
-    <div className="rounded-xl overflow-hidden" style={{ background: 'var(--color-bg-card)' }}>
+    <div className="glass-card-dark rounded-xl overflow-hidden">
       <div className="px-4 py-3 border-b border-white/10">
         <h3 className="font-semibold text-white">Recent Cases</h3>
       </div>

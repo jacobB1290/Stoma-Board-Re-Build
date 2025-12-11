@@ -13,6 +13,9 @@
   --danger: #dc2626;
   --danger-hover: #b91c1c;
   
+  /* Background colors for cards */
+  --color-bg-card: rgba(22, 82, 95, 0.4);
+  
   /* Column colors - EXACT from original animationEngine.js */
   --col-normal: #16525F;
   --col-today: #fef9c3; /* yellow-100 */
@@ -289,6 +292,14 @@ body {
   border-color: rgba(220, 38, 38, 0.4);
   transform: translateY(-1px);
   box-shadow: var(--shadow);
+}
+
+.cancel-button {
+  background: var(--gray-400) !important;
+}
+
+.cancel-button:hover {
+  background: var(--gray-500) !important;
 }
 
 /* Frosted button (reveal buttons from original) */

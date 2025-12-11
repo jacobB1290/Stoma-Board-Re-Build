@@ -2,11 +2,11 @@
 
 /**
  * CaseEditor Component
- * Add/Edit case form with duplicate detection
- * Matches original Manage Cases view
+ * Glass-panel form for adding/editing cases
+ * EXACT REPLICA of original Editor.jsx styling
  */
 
-import { useState, useCallback, useEffect, useMemo } from 'react';
+import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useData } from '@/contexts/DataContext';
 import { useUI } from '@/contexts/UIContext';
@@ -14,6 +14,7 @@ import { useDispatch } from '@/contexts/DispatchContext';
 import { checkForDuplicates } from '@/services/caseService';
 import { DEPARTMENTS, CASE_TYPES } from '@/lib/constants';
 import { toISODate, getToday, getDateFromToday } from '@/utils/dateUtils';
+import { cn } from '@/lib/cn';
 import type { Case, CreateCaseInput, UpdateCaseInput, Department, CaseType } from '@/types/case';
 
 // ═══════════════════════════════════════════════════════════
@@ -41,15 +42,19 @@ interface FormData {
 // ═══════════════════════════════════════════════════════════
 
 export function CaseEditor({ editCase, onClose }: CaseEditorProps) {
-  const { addOrUpdate, allRows } = useData();
+  const { addOrUpdate } = useData();
   const { activeDepartment } = useUI();
   const { dispatch } = useDispatch();
+
+  // Refs
+  const caseInputRef = useRef<HTMLInputElement>(null);
+  const dateInputRef = useRef<HTMLInputElement>(null);
 
   // Form state
   const [formData, setFormData] = useState<FormData>({
     caseNumber: '',
     department: (activeDepartment as Department) || 'Digital',
-    due: toISODate(getDateFromToday(1)), // Default to tomorrow
+    due: '',
     priority: false,
     rush: false,
     hold: false,
@@ -59,7 +64,23 @@ export function CaseEditor({ editCase, onClose }: CaseEditorProps) {
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [duplicateWarning, setDuplicateWarning] = useState<string | null>(null);
+  const [lastSaved, setLastSaved] = useState<string | null>(null);
+  const [duplicates, setDuplicates] = useState<any[]>([]);
+  const [showDuplicateWarning, setShowDuplicateWarning] = useState(false);
+
+  // Has user made changes to an edited case?
+  const hasChanges = useMemo(() => {
+    if (!editCase) return true;
+    return (
+      formData.caseNumber !== editCase.caseNumber ||
+      formData.department !== (editCase.department === 'General' ? 'Digital' : editCase.department) ||
+      formData.due !== editCase.due ||
+      formData.priority !== editCase.priority ||
+      formData.rush !== editCase.rush ||
+      formData.hold !== editCase.hold ||
+      formData.caseType !== (editCase.caseType || 'general')
+    );
+  }, [editCase, formData]);
 
   // Initialize form when editing
   useEffect(() => {
@@ -67,7 +88,7 @@ export function CaseEditor({ editCase, onClose }: CaseEditorProps) {
       setFormData({
         caseNumber: editCase.caseNumber || '',
         department: (editCase.department === 'General' ? 'Digital' : editCase.department) as Department,
-        due: editCase.due || toISODate(getToday()),
+        due: editCase.due?.split('T')[0] || toISODate(getToday()),
         priority: editCase.priority || false,
         rush: editCase.rush || false,
         hold: editCase.hold || false,
@@ -80,24 +101,23 @@ export function CaseEditor({ editCase, onClose }: CaseEditorProps) {
   // Check for duplicates when case number changes
   useEffect(() => {
     const doCheck = async () => {
-      if (formData.caseNumber.length >= 3) {
-        const duplicates = await checkForDuplicates(
-          formData.caseNumber, 
-          editCase?.id
-        );
-        
-        if (duplicates.length > 0) {
-          const dup = duplicates[0];
-          setDuplicateWarning(`Case ${formData.caseNumber} already exists (due: ${dup.due})`);
+      const caseToCheck = formData.caseNumber.split(' ')[0]; // Only check case number, not notes
+      if (caseToCheck.trim().length >= 1) {
+        const found = await checkForDuplicates(caseToCheck, editCase?.id);
+        if (found.length > 0) {
+          setDuplicates(found);
+          setShowDuplicateWarning(true);
         } else {
-          setDuplicateWarning(null);
+          setDuplicates([]);
+          setShowDuplicateWarning(false);
         }
       } else {
-        setDuplicateWarning(null);
+        setDuplicates([]);
+        setShowDuplicateWarning(false);
       }
     };
 
-    const debounce = setTimeout(doCheck, 300);
+    const debounce = setTimeout(doCheck, 500);
     return () => clearTimeout(debounce);
   }, [formData.caseNumber, editCase]);
 
@@ -107,33 +127,41 @@ export function CaseEditor({ editCase, onClose }: CaseEditorProps) {
     setError(null);
   }, []);
 
+  // Reset form
+  const reset = useCallback(() => {
+    setFormData({
+      caseNumber: '',
+      department: (activeDepartment as Department) || 'Digital',
+      due: '',
+      priority: false,
+      rush: false,
+      hold: false,
+      caseType: 'general',
+      needsRepair: false,
+    });
+    setDuplicates([]);
+    setShowDuplicateWarning(false);
+    setError(null);
+  }, [activeDepartment]);
+
   // Handle form submission
   const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Validation
-    if (!formData.caseNumber.trim()) {
-      setError('Case number is required');
-      return;
-    }
-
-    if (!formData.due) {
-      setError('Due date is required');
-      return;
-    }
+    if (!formData.caseNumber.trim() || !formData.due) return;
+    if (isSubmitting) return;
 
     setIsSubmitting(true);
     setError(null);
 
     try {
-      // Convert department for DB (Digital → General)
       const dbDepartment = formData.department === 'Digital' ? 'General' : formData.department;
 
       if (editCase) {
         // Update existing case
         const updatePayload: UpdateCaseInput = {
           id: editCase.id,
-          caseNumber: formData.caseNumber.trim().toUpperCase(),
+          caseNumber: formData.caseNumber.trim(),
           department: dbDepartment as Department,
           due: formData.due,
           priority: formData.priority,
@@ -152,7 +180,7 @@ export function CaseEditor({ editCase, onClose }: CaseEditorProps) {
       } else {
         // Create new case
         const createPayload: CreateCaseInput = {
-          caseNumber: formData.caseNumber.trim().toUpperCase(),
+          caseNumber: formData.caseNumber.trim(),
           department: dbDepartment as Department,
           due: formData.due,
           priority: formData.priority,
@@ -167,17 +195,9 @@ export function CaseEditor({ editCase, onClose }: CaseEditorProps) {
         if (result.error) {
           setError(result.error.message);
         } else {
-          // Clear form for next entry
-          setFormData({
-            caseNumber: '',
-            department: formData.department,
-            due: toISODate(getDateFromToday(1)),
-            priority: false,
-            rush: false,
-            hold: false,
-            caseType: 'general',
-            needsRepair: false,
-          });
+          setLastSaved(formData.caseNumber);
+          reset();
+          setTimeout(() => setLastSaved(null), 2000);
         }
       }
     } catch (err) {
@@ -185,298 +205,347 @@ export function CaseEditor({ editCase, onClose }: CaseEditorProps) {
     } finally {
       setIsSubmitting(false);
     }
-  }, [formData, editCase, addOrUpdate]);
+  }, [formData, editCase, addOrUpdate, reset]);
+
+  // Handle button click (Submit or Cancel)
+  const handleButtonClick = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    
+    if (editCase && !hasChanges) {
+      // Cancel editing
+      handleClose();
+    } else {
+      // Submit form
+      handleSubmit(e as any);
+    }
+  }, [editCase, hasChanges, handleSubmit]);
 
   // Handle close
   const handleClose = useCallback(() => {
+    reset();
     if (onClose) {
       onClose();
     } else {
       dispatch('ui.close_editor', {});
     }
-  }, [onClose, dispatch]);
+  }, [onClose, dispatch, reset]);
 
-  // Quick date buttons
-  const quickDates = useMemo(() => [
-    { label: 'Today', date: toISODate(getToday()) },
-    { label: 'Tomorrow', date: toISODate(getDateFromToday(1)) },
-    { label: '+2 Days', date: toISODate(getDateFromToday(2)) },
-    { label: '+3 Days', date: toISODate(getDateFromToday(3)) },
-    { label: '+1 Week', date: toISODate(getDateFromToday(7)) },
-  ], []);
+  // Handle date input click
+  const handleDateClick = useCallback(() => {
+    dateInputRef.current?.showPicker?.();
+  }, []);
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: 20 }}
-      className="p-6 rounded-2xl"
-      style={{ background: 'var(--color-bg-card)' }}
-    >
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="text-xl font-bold text-white">
-          {editCase ? 'Edit Case' : 'Add New Case'}
-        </h2>
-        {editCase && (
-          <button
-            onClick={handleClose}
-            className="text-gray-400 hover:text-white transition-colors"
-          >
-            ✕
-          </button>
-        )}
-      </div>
+    <div className="max-w-2xl mx-auto">
+      {/* Main Form Card - Glass Panel Style */}
+      <motion.section
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="glass-panel p-6"
+      >
+        {/* Form Content */}
+        <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Row 1: Case Number & Due Date */}
+          <div className="grid gap-4 sm:grid-cols-2">
+            {/* Case Number Input */}
+            <div className={cn('relative', showDuplicateWarning && 'input-warning-border')}>
+              <input
+                ref={caseInputRef}
+                type="text"
+                placeholder="Case #"
+                value={formData.caseNumber}
+                onChange={(e) => updateField('caseNumber', e.target.value)}
+                className="form-input"
+                autoFocus
+              />
+              {showDuplicateWarning && (
+                <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
+                  <svg className="w-5 h-5 text-amber-500" fill="currentColor" viewBox="0 0 20 20">
+                    <path
+                      fillRule="evenodd"
+                      d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                </div>
+              )}
+            </div>
 
-      <form onSubmit={handleSubmit} className="space-y-4">
-        {/* Case Number */}
-        <div>
-          <label className="block text-sm font-medium text-gray-300 mb-1">
-            Case Number
-          </label>
-          <input
-            type="text"
-            value={formData.caseNumber}
-            onChange={(e) => updateField('caseNumber', e.target.value.toUpperCase())}
-            placeholder="Enter case number"
-            className="w-full px-4 py-3 rounded-lg bg-white/10 border border-white/20 
-                     text-white placeholder-gray-500 focus:border-teal-500 focus:ring-1 
-                     focus:ring-teal-500 outline-none transition-colors font-mono"
-            autoFocus
-          />
-          
-          {/* Duplicate Warning */}
-          <AnimatePresence>
-            {duplicateWarning && (
-              <motion.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: 'auto' }}
-                exit={{ opacity: 0, height: 0 }}
-                className="mt-2 px-3 py-2 bg-yellow-500/20 border border-yellow-500/40 
-                         rounded-lg text-yellow-300 text-sm"
-              >
-                ⚠️ {duplicateWarning}
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
-
-        {/* Department */}
-        <div>
-          <label className="block text-sm font-medium text-gray-300 mb-1">
-            Department
-          </label>
-          <div className="flex gap-2">
-            {DEPARTMENTS.map((dept) => (
-              <button
-                key={dept}
-                type="button"
-                onClick={() => updateField('department', dept as Department)}
-                className={`
-                  flex-1 px-4 py-2 rounded-lg font-medium transition-colors text-sm
-                  ${formData.department === dept
-                    ? getDeptActiveClass(dept)
-                    : 'bg-white/10 text-gray-400 hover:bg-white/20'
-                  }
-                `}
-              >
-                {dept}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Due Date */}
-        <div>
-          <label className="block text-sm font-medium text-gray-300 mb-1">
-            Due Date
-          </label>
-          <input
-            type="date"
-            value={formData.due}
-            onChange={(e) => updateField('due', e.target.value)}
-            className="w-full px-4 py-3 rounded-lg bg-white/10 border border-white/20 
-                     text-white focus:border-teal-500 focus:ring-1 focus:ring-teal-500 
-                     outline-none transition-colors"
-          />
-          
-          {/* Quick Date Buttons */}
-          <div className="flex gap-2 mt-2 flex-wrap">
-            {quickDates.map(({ label, date }) => (
-              <button
-                key={label}
-                type="button"
-                onClick={() => updateField('due', date)}
-                className={`
-                  px-3 py-1 rounded text-xs font-medium transition-colors
-                  ${formData.due === date
-                    ? 'bg-teal-500 text-white'
-                    : 'bg-white/10 text-gray-400 hover:bg-white/20'
-                  }
-                `}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Case Type (Digital only) */}
-        {(formData.department === 'Digital' || formData.department === 'General') && (
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1">
-              Case Type
-            </label>
-            <div className="flex gap-2">
-              {CASE_TYPES.map((type) => (
-                <button
-                  key={type}
-                  type="button"
-                  onClick={() => updateField('caseType', type as CaseType)}
-                  className={`
-                    flex-1 px-4 py-2 rounded-lg font-medium transition-colors text-sm uppercase
-                    ${formData.caseType === type
-                      ? 'bg-teal-500 text-white'
-                      : 'bg-white/10 text-gray-400 hover:bg-white/20'
-                    }
-                  `}
-                >
-                  {type}
-                </button>
-              ))}
+            {/* Due Date Input */}
+            <div className="relative cursor-pointer" onClick={handleDateClick}>
+              <input
+                ref={dateInputRef}
+                type="date"
+                value={formData.due}
+                onChange={(e) => updateField('due', e.target.value)}
+                className={cn('form-input date-input cursor-pointer', !formData.due && 'date-empty')}
+              />
+              {!formData.due && (
+                <div className="pointer-events-none absolute inset-0 flex items-center px-3">
+                  <span className="text-gray-400 text-sm">mm/dd/yyyy</span>
+                </div>
+              )}
             </div>
           </div>
-        )}
 
-        {/* Flags */}
-        <div>
-          <label className="block text-sm font-medium text-gray-300 mb-2">
-            Status Flags
-          </label>
-          <div className="flex gap-3 flex-wrap">
-            <FlagToggle
-              label="Priority"
-              icon="★"
-              active={formData.priority}
-              color="yellow"
-              onClick={() => updateField('priority', !formData.priority)}
-            />
-            <FlagToggle
-              label="Rush"
-              icon="⚡"
-              active={formData.rush}
-              color="red"
-              onClick={() => updateField('rush', !formData.rush)}
-            />
-            <FlagToggle
-              label="On Hold"
-              icon="⏸"
-              active={formData.hold}
-              color="orange"
-              onClick={() => updateField('hold', !formData.hold)}
-            />
-            {!editCase && formData.department === 'Digital' && (
-              <FlagToggle
-                label="Repair"
-                icon="🔧"
-                active={formData.needsRepair}
-                color="purple"
-                onClick={() => updateField('needsRepair', !formData.needsRepair)}
-              />
-            )}
+          {/* Row 2: Department & Case Type */}
+          <div className="space-y-4">
+            <motion.div
+              className="flex items-start gap-4"
+              animate={{ gap: formData.department === 'Digital' ? '1rem' : '0rem' }}
+              transition={{ duration: 0.4, ease: [0.4, 0, 0.2, 1] }}
+            >
+              {/* Department Select */}
+              <motion.div
+                animate={{ width: formData.department === 'Digital' ? 'calc(50% - 0.5rem)' : '100%' }}
+                transition={{ duration: 0.4, ease: [0.4, 0, 0.2, 1] }}
+                className="flex-shrink-0"
+              >
+                <select
+                  value={formData.department}
+                  onChange={(e) => {
+                    const dept = e.target.value as Department;
+                    updateField('department', dept);
+                    if (dept !== 'Digital') updateField('caseType', 'general');
+                  }}
+                  className="form-select"
+                >
+                  <option value="Digital">Digital</option>
+                  <option value="C&B">C&B</option>
+                  <option value="Metal">Metal</option>
+                </select>
+              </motion.div>
+
+              {/* Case Type Select (Digital only) */}
+              <AnimatePresence>
+                {formData.department === 'Digital' && (
+                  <motion.div
+                    initial={{ width: '0%', opacity: 0, scale: 0.95 }}
+                    animate={{ width: 'calc(50% - 0.5rem)', opacity: 1, scale: 1 }}
+                    exit={{ width: '0%', opacity: 0, scale: 0.95 }}
+                    transition={{ duration: 0.4, ease: [0.4, 0, 0.2, 1] }}
+                    className="flex-shrink-0"
+                  >
+                    <select
+                      value={formData.caseType}
+                      onChange={(e) => updateField('caseType', e.target.value as CaseType)}
+                      className={cn(
+                        'form-select',
+                        formData.caseType === 'bbs' && 'select-purple',
+                        formData.caseType === 'flex' && 'select-pink'
+                      )}
+                    >
+                      <option value="general">General</option>
+                      <option value="bbs">Base Plates / Bite Rims / Splints</option>
+                      <option value="flex">3D Flex</option>
+                    </select>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </motion.div>
           </div>
-        </div>
+
+          {/* Row 3: Toggle Buttons */}
+          <div className="grid grid-cols-3 gap-3">
+            <button
+              type="button"
+              onClick={() => updateField('priority', !formData.priority)}
+              className={cn(
+                'toggle-button',
+                formData.priority
+                  ? 'toggle-active toggle-glow-red'
+                  : 'toggle-inactive text-red-600'
+              )}
+            >
+              Priority {formData.priority ? 'ON' : 'OFF'}
+            </button>
+            <button
+              type="button"
+              onClick={() => updateField('rush', !formData.rush)}
+              className={cn(
+                'toggle-button',
+                formData.rush
+                  ? 'toggle-active toggle-glow-orange'
+                  : 'toggle-inactive text-orange-600'
+              )}
+            >
+              Rush {formData.rush ? 'ON' : 'OFF'}
+            </button>
+            <button
+              type="button"
+              onClick={() => updateField('hold', !formData.hold)}
+              className={cn(
+                'toggle-button',
+                formData.hold
+                  ? 'toggle-active toggle-glow-amber'
+                  : 'toggle-inactive text-amber-600'
+              )}
+            >
+              Hold {formData.hold ? 'ON' : 'OFF'}
+            </button>
+          </div>
+
+          {/* Submit Button */}
+          <button
+            type="button"
+            onClick={handleButtonClick}
+            disabled={(!formData.caseNumber.trim() || !formData.due) && (!editCase || hasChanges)}
+            className={cn(
+              'primary-button w-full relative overflow-hidden',
+              isSubmitting && 'animate-pulse cursor-not-allowed opacity-75',
+              editCase && !hasChanges && 'cancel-button'
+            )}
+          >
+            {isSubmitting
+              ? 'Saving...'
+              : editCase
+                ? hasChanges
+                  ? 'Update Case'
+                  : 'Cancel'
+                : 'Save Case'
+            }
+          </button>
+        </form>
+
+        {/* Success Message */}
+        <AnimatePresence>
+          {lastSaved && (
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              className="mt-4 px-4 py-3 bg-green-100 border border-green-300 rounded-lg text-green-700 text-sm text-center"
+            >
+              Case <span className="font-semibold">{lastSaved}</span> saved successfully!
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Error Message */}
         <AnimatePresence>
           {error && (
             <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
-              exit={{ opacity: 0, height: 0 }}
-              className="px-4 py-3 bg-red-500/20 border border-red-500/40 
-                       rounded-lg text-red-300 text-sm"
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              className="mt-4 px-4 py-3 bg-red-100 border border-red-300 rounded-lg text-red-700 text-sm text-center"
             >
               {error}
             </motion.div>
           )}
         </AnimatePresence>
+      </motion.section>
 
-        {/* Submit Button */}
-        <button
-          type="submit"
-          disabled={isSubmitting}
-          className={`
-            w-full py-3 rounded-lg font-semibold text-white transition-all
-            ${isSubmitting
-              ? 'bg-gray-500 cursor-not-allowed'
-              : 'bg-teal-500 hover:bg-teal-400 active:scale-[0.98]'
-            }
-          `}
-        >
-          {isSubmitting 
-            ? 'Saving...' 
-            : editCase 
-              ? 'Update Case' 
-              : 'Add Case'
-          }
-        </button>
-      </form>
+      {/* Duplicate Warning Notification */}
+      <AnimatePresence>
+        {showDuplicateWarning && duplicates.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: 20 }}
+            className="glass-notification fixed top-20 right-4 w-96 p-4 rounded-xl shadow-xl z-50"
+          >
+            <div className="flex items-start gap-3">
+              <div className="flex-shrink-0">
+                <svg className="w-6 h-6 text-amber-500" fill="currentColor" viewBox="0 0 20 20">
+                  <path
+                    fillRule="evenodd"
+                    d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+              </div>
+              <div className="flex-1 min-w-0">
+                <h4 className="text-sm font-semibold text-gray-900">Possible Duplicate</h4>
+                <p className="mt-1 text-sm text-gray-600">
+                  Case number may already exist:
+                </p>
+                <ul className="mt-2 space-y-1">
+                  {duplicates.slice(0, 3).map((dup) => (
+                    <li key={dup.id} className="text-sm text-gray-700">
+                      <span className="font-medium">{dup.caseNumber}</span>
+                      <span className="text-gray-500"> - Due: {dup.due?.split('T')[0]}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              <button
+                onClick={() => setShowDuplicateWarning(false)}
+                className="flex-shrink-0 text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <svg className="w-5 h-5" viewBox="0 0 20 20" fill="currentColor">
+                  <path
+                    fillRule="evenodd"
+                    d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Info Rows */}
+      <div className="mx-auto mt-6 grid max-w-2xl grid-cols-1 sm:grid-cols-3 gap-3">
+        <InfoRow
+          type="priority"
+          title="Priority"
+          desc="Patient appointment today"
+        />
+        <InfoRow
+          type="rush"
+          title="Rush"
+          desc="Patient appointment tomorrow"
+        />
+        <InfoRow
+          type="standard"
+          title="Standard"
+          desc="Flexible timeline"
+        />
+      </div>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════
+// INFO ROW COMPONENT (from original)
+// ═══════════════════════════════════════════════════════════
+
+function InfoRow({ type, title, desc }: { type: 'priority' | 'rush' | 'standard'; title: string; desc: string }) {
+  const typeStyles = {
+    priority: 'ring-2 ring-red-500/30 bg-red-500/15',
+    rush: 'ring-2 ring-orange-500/30 bg-orange-500/15',
+    standard: 'ring-2 ring-teal-600/30 bg-teal-600/15',
+  };
+  
+  const iconColors = {
+    priority: 'bg-red-500',
+    rush: 'bg-orange-500',
+    standard: 'bg-teal-600',
+  };
+
+  return (
+    <motion.div
+      className={cn(
+        'flex items-start space-x-3 p-4 rounded-xl text-white font-sans text-base h-full glass-card-dark',
+        typeStyles[type]
+      )}
+      whileHover={{ y: -2, transition: { duration: 0.2 } }}
+    >
+      {type !== 'standard' && (
+        <span className={cn('h-12 w-1 rounded-full', iconColors[type])} />
+      )}
+      <div>
+        <div className="font-medium text-gray-100">{title}</div>
+        <div className="text-sm text-gray-300 mt-0.5">{desc}</div>
+      </div>
     </motion.div>
   );
 }
 
 // ═══════════════════════════════════════════════════════════
-// HELPER COMPONENTS
+// CANCEL BUTTON STYLES (add to globals.css later if needed)
 // ═══════════════════════════════════════════════════════════
 
-function FlagToggle({
-  label,
-  icon,
-  active,
-  color,
-  onClick,
-}: {
-  label: string;
-  icon: string;
-  active: boolean;
-  color: 'yellow' | 'red' | 'orange' | 'purple';
-  onClick: () => void;
-}) {
-  const colorClasses = {
-    yellow: active ? 'bg-yellow-500/30 text-yellow-300 border-yellow-500/50' : '',
-    red: active ? 'bg-red-500/30 text-red-300 border-red-500/50' : '',
-    orange: active ? 'bg-orange-500/30 text-orange-300 border-orange-500/50' : '',
-    purple: active ? 'bg-purple-500/30 text-purple-300 border-purple-500/50' : '',
-  };
-
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`
-        px-3 py-2 rounded-lg font-medium transition-all text-sm
-        border flex items-center gap-2
-        ${active
-          ? colorClasses[color]
-          : 'bg-white/10 text-gray-400 hover:bg-white/20 border-white/20'
-        }
-      `}
-    >
-      <span>{icon}</span>
-      <span>{label}</span>
-    </button>
-  );
-}
-
-function getDeptActiveClass(dept: string): string {
-  switch (dept) {
-    case 'Digital':
-      return 'bg-teal-500 text-white';
-    case 'Metal':
-      return 'bg-purple-500 text-white';
-    case 'C&B':
-      return 'bg-orange-500 text-white';
-    default:
-      return 'bg-teal-500 text-white';
-  }
-}
+// .cancel-button styling is defined in globals.css
