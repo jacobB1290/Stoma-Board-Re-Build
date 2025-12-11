@@ -19,9 +19,12 @@ export function toISODate(date: Date): string {
 
 /**
  * Parse ISO date string to Date object (in local timezone)
+ * Handles both "YYYY-MM-DD" and "YYYY-MM-DDTHH:MM:SS+00:00" formats
  */
 export function parseISODate(dateStr: string): Date {
-  const [year, month, day] = dateStr.split('-').map(Number);
+  // Extract just the date part (YYYY-MM-DD) if it includes time
+  const datePart = dateStr.split('T')[0];
+  const [year, month, day] = datePart.split('-').map(Number);
   return new Date(year, month - 1, day);
 }
 

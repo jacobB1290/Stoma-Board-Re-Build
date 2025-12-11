@@ -53,14 +53,10 @@ export function Board() {
   const today = getToday();
 
   // Filter and bucket cases
+  // Note: rows are already filtered by department in DataContext
   const { map, overdue, hold } = useMemo(() => {
-    // Filter by department
-    const filteredRows = activeDepartment 
-      ? rows.filter(r => {
-          if (activeDepartment === 'Digital') return r.department === 'General';
-          return r.department === activeDepartment;
-        })
-      : rows;
+    // Use rows directly - already filtered by DataProvider
+    const filteredRows = rows;
 
     // Initialize buckets
     const m: Record<string, Case[]> = {};
@@ -83,15 +79,16 @@ export function Board() {
       } else if (m[key]) {
         m[key].push(r);
       }
+      // Cases with dates beyond horizon are simply not shown
     });
 
     // Sort using shared compareCases function
     late.sort(compareCases);
     holdArr.sort(compareCases);
     Object.values(m).forEach(arr => arr.sort(compareCases));
-
+    
     return { map: m, overdue: late, hold: holdArr };
-  }, [rows, horizon, today, activeDepartment]);
+  }, [rows, horizon, today]);
 
   // Show stage dividers only for Digital view
   const showStageDividers = activeDepartment === 'Digital';
