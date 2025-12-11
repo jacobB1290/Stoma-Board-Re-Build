@@ -4,6 +4,12 @@
  * CaseEditor Component
  * Glass-panel form for adding/editing cases
  * EXACT REPLICA of original Editor.jsx styling
+ * 
+ * ARCHITECTURE NOTE:
+ * - Styling matches original white glass-panel design
+ * - Uses form-input/form-select CSS classes from globals.css
+ * - Toggle buttons use toggle-button classes with glow effects
+ * - Business logic flows through dispatch()
  */
 
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
@@ -12,7 +18,7 @@ import { useData } from '@/contexts/DataContext';
 import { useUI } from '@/contexts/UIContext';
 import { useDispatch } from '@/contexts/DispatchContext';
 import { checkForDuplicates } from '@/services/caseService';
-import { DEPARTMENTS, CASE_TYPES } from '@/lib/constants';
+import { DEPARTMENTS, CASE_TYPES, APP_VERSION } from '@/lib/constants';
 import { toISODate, getToday, getDateFromToday } from '@/utils/dateUtils';
 import { cn } from '@/lib/cn';
 import type { Case, CreateCaseInput, UpdateCaseInput, Department, CaseType } from '@/types/case';
@@ -101,7 +107,7 @@ export function CaseEditor({ editCase, onClose }: CaseEditorProps) {
   // Check for duplicates when case number changes
   useEffect(() => {
     const doCheck = async () => {
-      const caseToCheck = formData.caseNumber.split(' ')[0]; // Only check case number, not notes
+      const caseToCheck = formData.caseNumber.split(' ')[0];
       if (caseToCheck.trim().length >= 1) {
         const found = await checkForDuplicates(caseToCheck, editCase?.id);
         if (found.length > 0) {
@@ -158,7 +164,6 @@ export function CaseEditor({ editCase, onClose }: CaseEditorProps) {
       const dbDepartment = formData.department === 'Digital' ? 'General' : formData.department;
 
       if (editCase) {
-        // Update existing case
         const updatePayload: UpdateCaseInput = {
           id: editCase.id,
           caseNumber: formData.caseNumber.trim(),
@@ -178,7 +183,6 @@ export function CaseEditor({ editCase, onClose }: CaseEditorProps) {
           handleClose();
         }
       } else {
-        // Create new case
         const createPayload: CreateCaseInput = {
           caseNumber: formData.caseNumber.trim(),
           department: dbDepartment as Department,
@@ -207,15 +211,13 @@ export function CaseEditor({ editCase, onClose }: CaseEditorProps) {
     }
   }, [formData, editCase, addOrUpdate, reset]);
 
-  // Handle button click (Submit or Cancel)
+  // Handle button click
   const handleButtonClick = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
     
     if (editCase && !hasChanges) {
-      // Cancel editing
       handleClose();
     } else {
-      // Submit form
       handleSubmit(e as any);
     }
   }, [editCase, hasChanges, handleSubmit]);
@@ -237,12 +239,22 @@ export function CaseEditor({ editCase, onClose }: CaseEditorProps) {
 
   return (
     <div className="max-w-2xl mx-auto">
-      {/* Main Form Card - Glass Panel Style */}
+      {/* Version indicator */}
+      <div className="text-center text-xs text-gray-500 mb-4">
+        version {APP_VERSION}
+      </div>
+
+      {/* Main Form Card - White Glass Panel (EXACT original style) */}
       <motion.section
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         className="glass-panel p-6"
       >
+        {/* Title */}
+        <h2 className="text-center text-lg font-semibold text-gray-800 mb-6">
+          {editCase ? 'Edit Case' : 'Add New Case'}
+        </h2>
+
         {/* Form Content */}
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Row 1: Case Number & Due Date */}
@@ -252,7 +264,7 @@ export function CaseEditor({ editCase, onClose }: CaseEditorProps) {
               <input
                 ref={caseInputRef}
                 type="text"
-                placeholder="Case #"
+                placeholder="Case Number"
                 value={formData.caseNumber}
                 onChange={(e) => updateField('caseNumber', e.target.value)}
                 className="form-input"
@@ -345,7 +357,7 @@ export function CaseEditor({ editCase, onClose }: CaseEditorProps) {
             </motion.div>
           </div>
 
-          {/* Row 3: Toggle Buttons */}
+          {/* Row 3: Toggle Buttons (OUTLINED style like original) */}
           <div className="grid grid-cols-3 gap-3">
             <button
               type="button"
@@ -457,9 +469,7 @@ export function CaseEditor({ editCase, onClose }: CaseEditorProps) {
               </div>
               <div className="flex-1 min-w-0">
                 <h4 className="text-sm font-semibold text-gray-900">Possible Duplicate</h4>
-                <p className="mt-1 text-sm text-gray-600">
-                  Case number may already exist:
-                </p>
+                <p className="mt-1 text-sm text-gray-600">Case number may already exist:</p>
                 <ul className="mt-2 space-y-1">
                   {duplicates.slice(0, 3).map((dup) => (
                     <li key={dup.id} className="text-sm text-gray-700">
@@ -486,23 +496,11 @@ export function CaseEditor({ editCase, onClose }: CaseEditorProps) {
         )}
       </AnimatePresence>
 
-      {/* Info Rows */}
+      {/* Info Rows (Priority, Rush, Standard explanations) */}
       <div className="mx-auto mt-6 grid max-w-2xl grid-cols-1 sm:grid-cols-3 gap-3">
-        <InfoRow
-          type="priority"
-          title="Priority"
-          desc="Patient appointment today"
-        />
-        <InfoRow
-          type="rush"
-          title="Rush"
-          desc="Patient appointment tomorrow"
-        />
-        <InfoRow
-          type="standard"
-          title="Standard"
-          desc="Flexible timeline"
-        />
+        <InfoRow type="priority" title="Priority" desc="Patient appointment today" />
+        <InfoRow type="rush" title="Rush" desc="Patient appointment tomorrow" />
+        <InfoRow type="standard" title="Standard" desc="Flexible timeline" />
       </div>
     </div>
   );
@@ -543,9 +541,3 @@ function InfoRow({ type, title, desc }: { type: 'priority' | 'rush' | 'standard'
     </motion.div>
   );
 }
-
-// ═══════════════════════════════════════════════════════════
-// CANCEL BUTTON STYLES (add to globals.css later if needed)
-// ═══════════════════════════════════════════════════════════
-
-// .cancel-button styling is defined in globals.css

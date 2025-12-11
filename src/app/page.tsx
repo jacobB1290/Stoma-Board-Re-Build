@@ -3,19 +3,28 @@
 /**
  * Main Application Page
  * Entry point for the Stoma Board application
+ * 
+ * ARCHITECTURE NOTE:
+ * - Board view shows kanban-style columns
+ * - Manage view shows editor + case table (matching original)
  */
 
+import { useState } from 'react';
 import { Header } from '@/components/common/Header';
 import { UserSetupModal } from '@/components/common/UserSetupModal';
 import { Board } from '@/components/board';
 import { CaseEditor } from '@/components/editor';
+import { CaseTable } from '@/components/editor/CaseTable';
 import { useUI } from '@/contexts/UIContext';
 import { useData } from '@/contexts/DataContext';
-import { APP_VERSION } from '@/lib/constants';
 
 export default function Home() {
   const { currentView, activeDepartment, editorOpen, editingCaseId, closeEditor } = useUI();
   const { rows, loading, error, getRowById } = useData();
+
+  // Filter state for Manage view
+  const [searchQuery, setSearchQuery] = useState('');
+  const [deptFilter, setDeptFilter] = useState('All');
 
   // Get the case being edited (if any)
   const editingCase = editingCaseId ? getRowById(editingCaseId) : null;
@@ -68,141 +77,45 @@ export default function Home() {
             
             {currentView === 'manage' && (
               <div className="flex-1 overflow-auto p-4">
-                <div className="max-w-4xl mx-auto">
+                <div className="max-w-2xl mx-auto">
                   {/* Case Editor */}
                   <CaseEditor 
                     editCase={editingCase}
                     onClose={closeEditor}
                   />
                   
-                  {/* Recent Cases Table */}
-                  <div className="mt-8">
-                    <RecentCasesTable />
+                  {/* Filters (matching original) */}
+                  <div className="mx-auto my-6 grid max-w-2xl grid-cols-2 gap-4">
+                    <select
+                      value={deptFilter}
+                      onChange={(e) => setDeptFilter(e.target.value)}
+                      className="filter-input"
+                    >
+                      <option value="All">All Departments</option>
+                      <option value="Digital">Digital</option>
+                      <option value="C&B">C&B</option>
+                      <option value="Metal">Metal</option>
+                    </select>
+                    <input
+                      type="text"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      placeholder="Search cases..."
+                      className="filter-input"
+                    />
                   </div>
+                  
+                  {/* Case Table */}
+                  <CaseTable 
+                    searchQuery={searchQuery}
+                    deptFilter={deptFilter}
+                  />
                 </div>
               </div>
             )}
           </div>
         )}
       </main>
-
-      {/* Footer */}
-      <footer className="py-2 px-4 text-center text-xs text-gray-500">
-        Stoma Board v{APP_VERSION}
-      </footer>
     </div>
   );
-}
-
-// ═══════════════════════════════════════════════════════════
-// RECENT CASES TABLE
-// ═══════════════════════════════════════════════════════════
-
-function RecentCasesTable() {
-  const { allRows } = useData();
-  const { openEditor } = useUI();
-  const { dispatch } = useData() as any;
-
-  // Get most recent 20 cases (sorted by creation or due date)
-  const recentCases = allRows
-    .filter(r => !r.archived)
-    .sort((a, b) => b.due.localeCompare(a.due))
-    .slice(0, 20);
-
-  if (recentCases.length === 0) {
-    return (
-      <div className="text-center py-12 text-gray-500">
-        No cases yet. Add your first case above!
-      </div>
-    );
-  }
-
-  return (
-    <div className="glass-card-dark rounded-xl overflow-hidden">
-      <div className="px-4 py-3 border-b border-white/10">
-        <h3 className="font-semibold text-white">Recent Cases</h3>
-      </div>
-      
-      <div className="overflow-x-auto">
-        <table className="w-full">
-          <thead>
-            <tr className="text-left text-sm text-gray-400 border-b border-white/10">
-              <th className="px-4 py-3 font-medium">Case #</th>
-              <th className="px-4 py-3 font-medium">Dept</th>
-              <th className="px-4 py-3 font-medium">Due</th>
-              <th className="px-4 py-3 font-medium">Stage</th>
-              <th className="px-4 py-3 font-medium">Status</th>
-              <th className="px-4 py-3 font-medium">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {recentCases.map((row) => (
-              <tr 
-                key={row.id} 
-                className="border-b border-white/5 hover:bg-white/5 transition-colors"
-              >
-                <td className="px-4 py-3">
-                  <span 
-                    className="font-mono font-semibold"
-                    style={{ color: getDeptColor(row.department) }}
-                  >
-                    {row.caseNumber}
-                  </span>
-                </td>
-                <td className="px-4 py-3 text-sm text-gray-400">
-                  {row.department === 'General' ? 'Digital' : row.department}
-                </td>
-                <td className="px-4 py-3 text-sm text-gray-400">
-                  {row.due}
-                </td>
-                <td className="px-4 py-3 text-sm">
-                  {row.stage ? (
-                    <span className="px-2 py-1 rounded text-xs bg-white/10 capitalize">
-                      {row.stage}
-                    </span>
-                  ) : (
-                    <span className="text-gray-600">—</span>
-                  )}
-                </td>
-                <td className="px-4 py-3">
-                  <div className="flex items-center gap-1">
-                    {row.priority && <span className="text-yellow-400" title="Priority">★</span>}
-                    {row.rush && <span className="text-red-400" title="Rush">⚡</span>}
-                    {row.hold && <span className="text-orange-400" title="On Hold">⏸</span>}
-                    {row.completed && <span className="text-green-400" title="Completed">✓</span>}
-                    {!row.priority && !row.rush && !row.hold && !row.completed && (
-                      <span className="text-gray-600">—</span>
-                    )}
-                  </div>
-                </td>
-                <td className="px-4 py-3">
-                  <button
-                    onClick={() => openEditor(row.id)}
-                    className="px-3 py-1 text-xs bg-white/10 text-gray-300 
-                             rounded hover:bg-white/20 transition-colors"
-                  >
-                    Edit
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
-}
-
-function getDeptColor(dept: string): string {
-  switch (dept) {
-    case 'Digital':
-    case 'General':
-      return '#2dd4bf';
-    case 'Metal':
-      return '#a855f7';
-    case 'C&B':
-      return '#f97316';
-    default:
-      return '#94a3b8';
-  }
 }

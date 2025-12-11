@@ -457,13 +457,86 @@ registerHandler('case.toggle_rush', async ({ id }) => {
 - [x] CaseRow component (THIN)
 - [x] Header with dropdowns
 - [x] CaseEditor form
+- [x] CaseTable with collapsible sections
+- [x] Filter inputs (department, search)
 - [ ] Settings modal
-- [ ] Shared column components (extract)
+- [ ] All History modal
+- [ ] Delete confirmation modal
 
 ### Future
 - [ ] LLM API endpoint
 - [ ] Voice commands
 - [ ] Statistics dashboard
+
+---
+
+## 📈 CODE REFACTORING STATISTICS
+
+This section tracks how code has been transformed from the original app.
+
+### RULES FOR CODE CHANGES:
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│  Code Change Classification:                                            │
+│                                                                         │
+│  • REFACTORED: Logic understood, rebuilt in new architecture            │
+│    - Same functionality, different implementation                       │
+│    - Follows efficiency-first patterns                                  │
+│    - Uses shared utilities, CSS variables, dispatch()                   │
+│                                                                         │
+│  • NEW: Original architecture code (services, contexts, types)          │
+│    - Did not exist in original app                                      │
+│    - Enables the efficiency-first architecture                          │
+│                                                                         │
+│  • PORTED: Directly copied/adapted with minimal changes                 │
+│    - Same logic, same structure                                         │
+│    - Only syntax changes (JSX → TSX, CSS classes)                       │
+│                                                                         │
+│  RULE: We DO NOT copy-paste. We understand and rebuild.                 │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+### Current Statistics (as of last update):
+
+| Category | Files | Lines | Description |
+|----------|-------|-------|-------------|
+| **REFACTORED** | 13 | ~2,600 | Components rebuilt with new architecture |
+| **NEW** | 18 | ~3,100 | Architecture code (services, contexts, types) |
+| **PORTED** | 2 | ~800 | CSS variables, animation configs |
+| **TOTAL** | 41 | ~6,500 | Full application |
+
+### Component Breakdown:
+
+| Component | Original | Status | Notes |
+|-----------|----------|--------|-------|
+| Board.tsx | Board.jsx | REFACTORED | Uses shared helpers, dispatch() |
+| CaseRow.tsx | Row.jsx | REFACTORED | Thin component, no business logic |
+| DayCol.tsx | DayCol.jsx | REFACTORED | Uses ColumnShell, shared dividers |
+| MetaCol.tsx | MetaCol.jsx | REFACTORED | Reuses DayCol components |
+| Header.tsx | App.jsx header | REFACTORED | Same dropdowns, new architecture |
+| CaseEditor.tsx | Editor.jsx | REFACTORED | Glass panel, dispatch pattern |
+| CaseTable.tsx | CaseTable.jsx | REFACTORED | Collapsible sections, status dots |
+| caseService.ts | caseService.js | REFACTORED | TypeScript, cleaner API |
+| animations.ts | animationEngine.js | PORTED | Same configs, typed |
+| globals.css | styles.css + glass.css | PORTED | Combined, CSS variables |
+
+### Original vs New Architecture:
+
+| Aspect | Original | New |
+|--------|----------|-----|
+| Components | 18 JSX files | 13 TSX files (consolidated) |
+| Business Logic | Mixed in components | Centralized in services/ |
+| State Mutations | Direct Supabase calls | dispatch() → handlers → services |
+| Animations | Inline configs | Shared lib/animations.ts |
+| Colors | Hardcoded | CSS variables |
+| Types | None (JavaScript) | Full TypeScript |
+
+### After Each Change:
+Update this section with:
+1. Files changed
+2. Lines added/removed
+3. Classification (REFACTORED/NEW/PORTED)
+4. Brief description of change
 
 ---
 
