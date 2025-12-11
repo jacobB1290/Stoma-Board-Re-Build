@@ -1,0 +1,179 @@
+@import "tailwindcss";
+
+/* ═══════════════════════════════════════════════════════════
+   CSS VARIABLES
+   ═══════════════════════════════════════════════════════════ */
+
+:root {
+  /* App colors - matching the original teal theme */
+  --color-bg-primary: #0d3b3e;
+  --color-bg-secondary: #0a2e30;
+  --color-bg-card: #164043;
+  --color-bg-card-hover: #1a4d50;
+  
+  /* Text colors */
+  --color-text-primary: #ffffff;
+  --color-text-secondary: #94a3b8;
+  --color-text-muted: #64748b;
+  
+  /* Accent colors */
+  --color-accent-teal: #2dd4bf;
+  --color-accent-gold: #fbbf24;
+  --color-accent-red: #ef4444;
+  --color-accent-orange: #f97316;
+  --color-accent-purple: #a855f7;
+  --color-accent-blue: #3b82f6;
+  
+  /* Department colors */
+  --color-dept-digital: #2dd4bf;
+  --color-dept-metal: #a855f7;
+  --color-dept-cab: #f97316;
+  
+  /* Status colors */
+  --color-status-overdue: #dc2626;
+  --color-status-hold: #d97706;
+  --color-status-rush: #ef4444;
+  --color-status-priority: #fbbf24;
+  --color-status-today: #fef3c7;
+  
+  /* Font */
+  --font-sans: var(--font-geist-sans), system-ui, -apple-system, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+}
+
+/* Light theme overrides */
+.light {
+  --color-bg-primary: #f8fafc;
+  --color-bg-secondary: #f1f5f9;
+  --color-bg-card: #ffffff;
+  --color-bg-card-hover: #f8fafc;
+  --color-text-primary: #0f172a;
+  --color-text-secondary: #475569;
+  --color-text-muted: #94a3b8;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   BASE STYLES
+   ═══════════════════════════════════════════════════════════ */
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  font-family: var(--font-sans);
+}
+
+body {
+  background: var(--color-bg-primary);
+  color: var(--color-text-primary);
+  min-height: 100vh;
+  margin: 0;
+  padding: 0;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   TAILWIND THEME EXTENSION
+   ═══════════════════════════════════════════════════════════ */
+
+@theme inline {
+  /* Colors */
+  --color-bg-primary: var(--color-bg-primary);
+  --color-bg-secondary: var(--color-bg-secondary);
+  --color-bg-card: var(--color-bg-card);
+  --color-bg-card-hover: var(--color-bg-card-hover);
+  --color-text-primary: var(--color-text-primary);
+  --color-text-secondary: var(--color-text-secondary);
+  --color-text-muted: var(--color-text-muted);
+  
+  /* Fonts */
+  --font-sans: var(--font-sans);
+  --font-mono: var(--font-mono);
+}
+
+/* ═══════════════════════════════════════════════════════════
+   CUSTOM UTILITY CLASSES
+   ═══════════════════════════════════════════════════════════ */
+
+/* Scrollbar styling */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #475569;
+  border-radius: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #64748b;
+}
+
+/* Hide scrollbar but keep functionality */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   ANIMATIONS
+   ═══════════════════════════════════════════════════════════ */
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { 
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to { 
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.2s ease-out;
+}
+
+.animate-slide-up {
+  animation: slideUp 0.3s ease-out;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   UPDATE PENDING INDICATOR
+   ═══════════════════════════════════════════════════════════ */
+
+.update-pending::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, #fbbf24, #f97316);
+  z-index: 9999;
+  animation: pulse 2s infinite;
+}
+
+.update-critical::before {
+  background: linear-gradient(90deg, #ef4444, #dc2626);
+  animation: pulse 1s infinite;
+}
