@@ -7,13 +7,18 @@
 
 import { Header } from '@/components/common/Header';
 import { UserSetupModal } from '@/components/common/UserSetupModal';
+import { Board } from '@/components/board';
+import { CaseEditor } from '@/components/editor';
 import { useUI } from '@/contexts/UIContext';
 import { useData } from '@/contexts/DataContext';
 import { APP_VERSION } from '@/lib/constants';
 
 export default function Home() {
-  const { currentView, activeDepartment } = useUI();
-  const { rows, loading, error } = useData();
+  const { currentView, activeDepartment, editorOpen, editingCaseId, closeEditor } = useUI();
+  const { rows, loading, error, getRowById } = useData();
+
+  // Get the case being edited (if any)
+  const editingCase = editingCaseId ? getRowById(editingCaseId) : null;
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -24,7 +29,7 @@ export default function Home() {
       <Header />
       
       {/* Main Content */}
-      <main className="flex-1 p-4">
+      <main className="flex-1 flex flex-col overflow-hidden">
         {/* Loading State */}
         {loading && (
           <div className="flex items-center justify-center h-64">
@@ -58,17 +63,24 @@ export default function Home() {
 
         {/* Content based on view */}
         {!loading && !error && (
-          <div className="animate-fade-in">
-            {currentView === 'board' && (
-              <BoardPlaceholder 
-                department={activeDepartment} 
-                caseCount={rows.length} 
-              />
-            )}
+          <div className="flex-1 flex flex-col overflow-hidden animate-fade-in">
+            {currentView === 'board' && <Board />}
+            
             {currentView === 'manage' && (
-              <ManagePlaceholder 
-                caseCount={rows.length} 
-              />
+              <div className="flex-1 overflow-auto p-4">
+                <div className="max-w-4xl mx-auto">
+                  {/* Case Editor */}
+                  <CaseEditor 
+                    editCase={editingCase}
+                    onClose={closeEditor}
+                  />
+                  
+                  {/* Recent Cases Table */}
+                  <div className="mt-8">
+                    <RecentCasesTable />
+                  </div>
+                </div>
+              </div>
             )}
           </div>
         )}
@@ -82,74 +94,115 @@ export default function Home() {
   );
 }
 
-// Temporary placeholder components until we build the real ones
-function BoardPlaceholder({ department, caseCount }: { department: string | null; caseCount: number }) {
-  return (
-    <div 
-      className="rounded-2xl p-8 text-center"
-      style={{ background: 'var(--color-bg-card)' }}
-    >
-      <h2 className="text-2xl font-bold text-white mb-4">
-        Board View
-      </h2>
-      <p className="text-gray-400 mb-6">
-        {department ? `${department} Department` : 'All Departments'} • {caseCount} cases
-      </p>
-      <div className="grid grid-cols-7 gap-4 mt-8">
-        {['Today', 'Tomorrow', 'Day 3', 'Day 4', 'Day 5', 'Day 6', 'Day 7'].map((day, i) => (
-          <div 
-            key={day}
-            className={`p-4 rounded-xl ${i === 0 ? 'bg-yellow-100/20' : 'bg-white/5'}`}
-          >
-            <h3 className={`font-semibold mb-2 ${i === 0 ? 'text-yellow-300' : 'text-gray-300'}`}>
-              {day}
-            </h3>
-            <div className="text-sm text-gray-500">
-              Cases will appear here
-            </div>
-          </div>
-        ))}
+// ═══════════════════════════════════════════════════════════
+// RECENT CASES TABLE
+// ═══════════════════════════════════════════════════════════
+
+function RecentCasesTable() {
+  const { allRows } = useData();
+  const { openEditor } = useUI();
+  const { dispatch } = useData() as any;
+
+  // Get most recent 20 cases (sorted by creation or due date)
+  const recentCases = allRows
+    .filter(r => !r.archived)
+    .sort((a, b) => b.due.localeCompare(a.due))
+    .slice(0, 20);
+
+  if (recentCases.length === 0) {
+    return (
+      <div className="text-center py-12 text-gray-500">
+        No cases yet. Add your first case above!
       </div>
-      <p className="mt-8 text-sm text-gray-500">
-        The full board component will be built in the next phase
-      </p>
+    );
+  }
+
+  return (
+    <div className="rounded-xl overflow-hidden" style={{ background: 'var(--color-bg-card)' }}>
+      <div className="px-4 py-3 border-b border-white/10">
+        <h3 className="font-semibold text-white">Recent Cases</h3>
+      </div>
+      
+      <div className="overflow-x-auto">
+        <table className="w-full">
+          <thead>
+            <tr className="text-left text-sm text-gray-400 border-b border-white/10">
+              <th className="px-4 py-3 font-medium">Case #</th>
+              <th className="px-4 py-3 font-medium">Dept</th>
+              <th className="px-4 py-3 font-medium">Due</th>
+              <th className="px-4 py-3 font-medium">Stage</th>
+              <th className="px-4 py-3 font-medium">Status</th>
+              <th className="px-4 py-3 font-medium">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {recentCases.map((row) => (
+              <tr 
+                key={row.id} 
+                className="border-b border-white/5 hover:bg-white/5 transition-colors"
+              >
+                <td className="px-4 py-3">
+                  <span 
+                    className="font-mono font-semibold"
+                    style={{ color: getDeptColor(row.department) }}
+                  >
+                    {row.caseNumber}
+                  </span>
+                </td>
+                <td className="px-4 py-3 text-sm text-gray-400">
+                  {row.department === 'General' ? 'Digital' : row.department}
+                </td>
+                <td className="px-4 py-3 text-sm text-gray-400">
+                  {row.due}
+                </td>
+                <td className="px-4 py-3 text-sm">
+                  {row.stage ? (
+                    <span className="px-2 py-1 rounded text-xs bg-white/10 capitalize">
+                      {row.stage}
+                    </span>
+                  ) : (
+                    <span className="text-gray-600">—</span>
+                  )}
+                </td>
+                <td className="px-4 py-3">
+                  <div className="flex items-center gap-1">
+                    {row.priority && <span className="text-yellow-400" title="Priority">★</span>}
+                    {row.rush && <span className="text-red-400" title="Rush">⚡</span>}
+                    {row.hold && <span className="text-orange-400" title="On Hold">⏸</span>}
+                    {row.completed && <span className="text-green-400" title="Completed">✓</span>}
+                    {!row.priority && !row.rush && !row.hold && !row.completed && (
+                      <span className="text-gray-600">—</span>
+                    )}
+                  </div>
+                </td>
+                <td className="px-4 py-3">
+                  <button
+                    onClick={() => openEditor(row.id)}
+                    className="px-3 py-1 text-xs bg-white/10 text-gray-300 
+                             rounded hover:bg-white/20 transition-colors"
+                  >
+                    Edit
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
 
-function ManagePlaceholder({ caseCount }: { caseCount: number }) {
-  return (
-    <div 
-      className="rounded-2xl p-8"
-      style={{ background: 'var(--color-bg-card)' }}
-    >
-      <h2 className="text-2xl font-bold text-white mb-4 text-center">
-        Manage Cases
-      </h2>
-      <p className="text-gray-400 mb-6 text-center">
-        {caseCount} total cases loaded
-      </p>
-      
-      {/* Form placeholder */}
-      <div className="max-w-2xl mx-auto">
-        <div 
-          className="p-6 rounded-xl mb-6"
-          style={{ background: 'var(--color-bg-secondary)' }}
-        >
-          <h3 className="text-lg font-semibold text-white mb-4">Add New Case</h3>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="h-12 bg-white/10 rounded-lg animate-pulse" />
-            <div className="h-12 bg-white/10 rounded-lg animate-pulse" />
-            <div className="h-12 bg-white/10 rounded-lg animate-pulse" />
-            <div className="h-12 bg-white/10 rounded-lg animate-pulse" />
-          </div>
-          <div className="mt-4 h-12 bg-teal-500/50 rounded-lg animate-pulse" />
-        </div>
-        
-        <p className="text-center text-sm text-gray-500">
-          The case editor will be built in the next phase
-        </p>
-      </div>
-    </div>
-  );
+function getDeptColor(dept: string): string {
+  switch (dept) {
+    case 'Digital':
+    case 'General':
+      return '#2dd4bf';
+    case 'Metal':
+      return '#a855f7';
+    case 'C&B':
+      return '#f97316';
+    default:
+      return '#94a3b8';
+  }
 }
